@@ -62,8 +62,7 @@
 | Rama | Qué contiene |
 |---|---|
 | `main` | La aplicación **original, vulnerable a propósito** (para la fase de pentesting). No usar en producción. |
-| `mejoras` | La versión **corregida**, con todas las correcciones de `VUL-01` a `VUL-12` en un solo commit (`a471f0a`), más mejoras posteriores y la documentación. |
-| `mejoras-por-vul` | La misma versión corregida, pero con **un commit por vulnerabilidad** (`VUL-01` a `VUL-12`) para ver cómo se solucionó cada una. |
+| `mejoras-por-vul` | La versión **corregida**, con **un commit por vulnerabilidad** (`VUL-01` a `VUL-12`) para ver cómo se solucionó cada una, más mejoras posteriores (HTTPS tras balanceador, hash señuelo en el login, limpieza) y la documentación. |
 
 Cada corrección está documentada con evidencia antes/después en el *Informe técnico de remediación* del curso.
 
