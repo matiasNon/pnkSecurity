@@ -38,10 +38,25 @@ set_exception_handler(function (Throwable $t) {
     exit;
 });
 
+/**
+ * ¿La petición del usuario llegó por HTTPS?
+ * Detrás de un balanceador (AWS ALB/CloudFront) el TLS termina en el balanceador y PHP ve HTTP,
+ * así que X-Forwarded-Proto sólo se respeta si el servidor declara PNK_TRUST_PROXY=1
+ * (de lo contrario cualquier cliente podría falsificar la cabecera).
+ */
 function es_https(): bool
 {
-    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        return true;
+    }
+    if (($_SERVER['SERVER_PORT'] ?? '') === '443') {
+        return true;
+    }
+    if (env_pnk('PNK_TRUST_PROXY') === '1') {
+        $proto = strtolower(trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0]));
+        return $proto === 'https';
+    }
+    return false;
 }
 
 // --- Cabeceras de seguridad (ASVS V3 / V13) ---
