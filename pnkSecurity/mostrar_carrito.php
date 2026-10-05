@@ -49,10 +49,11 @@ $carrito = (isset($_SESSION['carrito']) && is_array($_SESSION['carrito'])) ? $_S
           <div style="text-align: center;">
             
             <?php
-              if($datos_restorant['foto']!="")
-              {  
+              $foto_restorant = ruta_foto($key, $datos_restorant['foto']);
+              if($foto_restorant !== null)
+              {
                 ?>
-                  <img class="logosintituciones" src="../imagenes/cod<?php echo $key;?>/<?php echo $datos_restorant['foto'];?>" width="170px" alt="">
+                  <img class="logosintituciones" src="<?php echo e($foto_restorant);?>" width="170px" alt="">
               <?php
               }else{
                 ?>
@@ -66,7 +67,7 @@ $carrito = (isset($_SESSION['carrito']) && is_array($_SESSION['carrito'])) ? $_S
         <div class="col-lg-4">
           <div class="carro">
             <div class="media float-right">
-              <a class="volver" href="index.php?id=<?php echo $_GET['keyid'];?>">
+              <a class="volver" href="index.php?id=<?php echo (int)$key;?>">
               Volver a la Carta
               </a>&nbsp;&nbsp;
               <a class="limpiar" href="#">
@@ -106,11 +107,11 @@ $carrito = (isset($_SESSION['carrito']) && is_array($_SESSION['carrito'])) ? $_S
                      {
                      ?>
                      <tr>
-                        <th scope="row"><?php echo $value["id"];?></th>
-                        <td><?php echo $value["nombre"];?></td>
-                        <td><?php echo moneda_chilena($value["precio"]);?></td>
+                        <th scope="row"><?php echo e($value["id"]);?></th>
+                        <td><?php echo e($value["nombre"]);?></td>
+                        <td><?php echo e(moneda_chilena($value["precio"]));?></td>
                         <td>
-                          <a class="elim" id="<?php echo $value["posicion"];?>" href="#">
+                          <a class="elim" id="<?php echo (int)$value["posicion"];?>" href="#">
                             <svg width="2em" height="2em" viewBox="0 0 16 16" class="bi bi-trash-fill text-danger" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                               <path fill-rule="evenodd" d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5a.5.5 0 0 0-1 0v7a.5.5 0 0 0 1 0v-7z"/>
                             </svg>
@@ -118,7 +119,7 @@ $carrito = (isset($_SESSION['carrito']) && is_array($_SESSION['carrito'])) ? $_S
                         </td>
                      </tr>
                      <?php
-                        $total+=$value["precio"];
+                        $total+=(int)$value["precio"];
                      }
                      ?>
                   </tbody>
