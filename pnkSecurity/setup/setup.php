@@ -78,3 +78,40 @@ function moneda_chilena($numero)
     return "$ " . strrev($tmp);
 }
 
+// --- Sesión endurecida (ASVS V7) ---
+const SESION_INACTIVIDAD_MAX = 1800;  // 30 minutos sin actividad
+const SESION_VIDA_MAX        = 28800; // 8 horas desde el inicio de sesión, aunque haya actividad
+
+function iniciar_sesion(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
+    // Que el servidor no borre la sesión antes que el control de inactividad de este código.
+    ini_set('session.gc_maxlifetime', (string) (SESION_INACTIVIDAD_MAX + 600));
+    session_name('PNKSESSID');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'secure'   => es_https(),
+        'httponly' => true,
+        'samesite' => 'Strict',
+    ]);
+    session_start();
+    $ahora = time();
+    $inactiva = isset($_SESSION['ultima_actividad']) && ($ahora - (int) $_SESSION['ultima_actividad']) > SESION_INACTIVIDAD_MAX;
+    $vencida  = isset($_SESSION['inicio']) && ($ahora - (int) $_SESSION['inicio']) > SESION_VIDA_MAX;
+    if ($inactiva || $vencida) {
+        $_SESSION = [];
+        session_regenerate_id(true);
+    }
+    $_SESSION['ultima_actividad'] = $ahora;
+}
+
+function usuario_autenticado(): bool
+{
+    return isset($_SESSION['uid']) && is_int($_SESSION['uid']);
+}
+

@@ -1,6 +1,6 @@
 <?php
-include("setup/setup.php");
-session_start();
+require __DIR__ . '/setup/setup.php';
+iniciar_sesion();
 
 // El enlace desde la carta envía "keyid"; se acepta también "id". Sólo enteros válidos.
 $key = entero_get('keyid') ?? entero_get('id');

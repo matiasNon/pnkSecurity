@@ -1,7 +1,7 @@
 <?php
 
-include("setup/setup.php");
-session_start();
+require __DIR__ . '/setup/setup.php';
+iniciar_sesion();
 
 // El identificador del restaurante se valida como entero y se consulta con parámetros.
 $key = entero_get('id');
@@ -37,7 +37,7 @@ if ($datos_restorant === null) {
 <body>
 <nav class="navbar navbar-light bg-light">
    <?php
-    if(!isset($_SESSION['nombre']))
+    if(!usuario_autenticado())
     {
     ?>
       <form class="form-inline" role="search" action="setup/procesalogin.php" method="post">
