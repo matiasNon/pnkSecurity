@@ -143,6 +143,21 @@ function usuario_autenticado(): bool
     return isset($_SESSION['uid']) && is_int($_SESSION['uid']);
 }
 
+/**
+ * Compara la clave ingresada con la almacenada.
+ * Si la BD guarda un hash (password_hash) se usa password_verify; si guarda texto plano
+ * (estado actual de la BD, que no se modifica) se compara en tiempo constante y distinguiendo
+ * mayúsculas. Así el código sigue funcionando el día que las claves pasen a hash.
+ */
+function verificar_password(string $ingresada, string $almacenada): bool
+{
+    $info = password_get_info($almacenada);
+    if (!empty($info['algo'])) {
+        return password_verify($ingresada, $almacenada);
+    }
+    return $almacenada !== '' && hash_equals($almacenada, $ingresada);
+}
+
 // --- CSRF (ASVS V3): token por sesión, comparación en tiempo constante ---
 function csrf_token(): string
 {
