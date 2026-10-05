@@ -109,6 +109,108 @@ function redirigir(string $ruta): void
     exit;
 }
 
+// --- Almacén de contadores (límites de intentos de login y de comentarios) ---
+// No usa la BD ni archivos del proyecto: es un JSON en el directorio temporal del sistema (donde PHP
+// ya guarda las sesiones), con permisos 0600 y bloqueo exclusivo (flock). Sólo guarda hashes y marcas
+// de tiempo, que se descartan a la hora. $operacion recibe (array &$datos, int $ahora) y puede
+// consultar y modificar los contadores de forma atómica. Si el archivo no se puede usar se registra el
+// error y devuelve null (el llamador decide cómo seguir).
+const ALMACEN_RETENCION_SEG = 3600;
+const ALMACEN_MAX_CLAVES    = 5000;
+
+function almacen_operar(callable $operacion)
+{
+    $ruta = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'pnk_estado_' . substr(hash('sha256', __DIR__), 0, 12) . '.json';
+    $mascara = umask(0077);
+    $f = @fopen($ruta, 'c+');
+    umask($mascara);
+    if ($f === false || !flock($f, LOCK_EX)) {
+        error_log('[pnkSecurity] No se pudo abrir o bloquear el almacén de contadores: ' . $ruta);
+        if (is_resource($f)) {
+            fclose($f);
+        }
+        return null;
+    }
+    try {
+        $datos = json_decode((string) stream_get_contents($f), true);
+        if (!is_array($datos)) {
+            $datos = [];
+        }
+        $ahora  = time();
+        $limite = $ahora - ALMACEN_RETENCION_SEG;
+        foreach ($datos as $clave => $marcas) {
+            $vigentes = array_values(array_filter(is_array($marcas) ? $marcas : [], function ($t) use ($limite) {
+                return is_int($t) && $t > $limite;
+            }));
+            if ($vigentes) {
+                $datos[$clave] = $vigentes;
+            } else {
+                unset($datos[$clave]);
+            }
+        }
+        if (count($datos) > ALMACEN_MAX_CLAVES) {
+            $datos = array_slice($datos, -ALMACEN_MAX_CLAVES, null, true);
+        }
+        $resultado = $operacion($datos, $ahora);
+        // Se escribe primero y se trunca al final: nunca queda un instante con el archivo vacío.
+        $json = (string) json_encode($datos);
+        rewind($f);
+        if (fwrite($f, $json) === false) {
+            error_log('[pnkSecurity] No se pudo escribir el almacén de contadores.');
+        } else {
+            ftruncate($f, strlen($json));
+            fflush($f);
+        }
+        return $resultado;
+    } finally {
+        flock($f, LOCK_UN);
+        fclose($f);
+    }
+}
+
+/** Cantidad de marcas de tiempo de $clave dentro de los últimos $ventana segundos. */
+function almacen_contar(array $datos, string $clave, int $ahora, int $ventana): int
+{
+    $n = 0;
+    foreach ($datos[$clave] ?? [] as $t) {
+        if ($t > $ahora - $ventana) {
+            $n++;
+        }
+    }
+    return $n;
+}
+
+// --- Registro de eventos de seguridad (ASVS V16, ISO 27001 A.8.15) ---
+// Va al log de errores del servidor (error_log de PHP/Apache), que no es accesible por HTTP.
+// Nunca se registran contraseñas. Los valores se limpian para evitar inyección de líneas en el log.
+function log_limpiar($valor, int $max = 100): string
+{
+    $v = preg_replace('/[\x00-\x1F\x7F]+/', ' ', (string) $valor);
+    return mb_substr((string) $v, 0, $max, 'UTF-8');
+}
+
+/** Identifica al usuario en el log: el email si es válido; si no (p. ej. alguien escribió su clave en el campo), sólo un hash corto. */
+function log_usuario($usuario): string
+{
+    $u = trim((string) $usuario);
+    if ($u !== '' && filter_var($u, FILTER_VALIDATE_EMAIL) !== false) {
+        return log_limpiar($u);
+    }
+    return $u === '' ? '(vacio)' : '(no-email:' . substr(hash('sha256', $u), 0, 10) . ')';
+}
+
+function log_seguridad(string $categoria, string $evento, array $datos = []): void
+{
+    $partes = [
+        'fecha=' . date('c'),
+        'ip=' . log_limpiar($_SERVER['REMOTE_ADDR'] ?? '-', 45),
+    ];
+    foreach ($datos as $clave => $valor) {
+        $partes[] = log_limpiar($clave, 30) . '=' . log_limpiar($valor);
+    }
+    error_log('[' . $categoria . '] ' . $evento . ' ' . implode(' ', $partes));
+}
+
 function quitarespacios($titulo)
 {
     $titulo = str_replace(" ", "", $titulo);
