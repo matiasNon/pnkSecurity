@@ -46,6 +46,18 @@ function e($valor): string
     return htmlspecialchars((string) $valor, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function entero_get(string $clave): ?int
+{
+    $v = filter_input(INPUT_GET, $clave, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+    return is_int($v) ? $v : null;
+}
+
+function entero_post(string $clave): ?int
+{
+    $v = filter_input(INPUT_POST, $clave, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+    return is_int($v) ? $v : null;
+}
+
 /** Ruta relativa de una imagen sólo si el nombre de archivo es seguro; si no, null. */
 function ruta_foto(int $restauranteId, $foto): ?string
 {
@@ -53,6 +65,22 @@ function ruta_foto(int $restauranteId, $foto): ?string
         return null;
     }
     return 'imagenes/cod' . $restauranteId . '/' . $foto;
+}
+
+function responder_error(int $codigo, string $mensaje): void
+{
+    http_response_code($codigo);
+    header('Content-Type: text/html; charset=UTF-8');
+    echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>' . e($mensaje) . '</title></head>'
+       . '<body><h1>' . e($mensaje) . '</h1></body></html>';
+    exit;
+}
+
+/** Redirección interna (sólo rutas relativas construidas por el servidor). */
+function redirigir(string $ruta): void
+{
+    header('Location: ' . $ruta);
+    exit;
 }
 
 function quitarespacios($titulo)

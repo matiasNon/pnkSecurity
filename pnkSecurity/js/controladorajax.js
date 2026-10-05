@@ -5,18 +5,35 @@ $.ajaxSetup({
   headers: { 'X-CSRF-Token': $('meta[name="csrf-token"]').attr('content') || '' }
 });
 
+// Si la sesión o el token vencieron (403) se recarga la página para obtener uno nuevo; 409 = carrito lleno.
+$(document).ajaxError(function(evento, xhr){
+  if (xhr.status === 403) {
+    location.reload();
+  } else if (xhr.status === 409) {
+    alert('El carrito alcanzó el máximo de productos.');
+  }
+});
+
 $(document).ready(function(){
-   $('.button').click(function(){
+   $('.button').click(function(e){
+     e.preventDefault();
      agregaritems($(this).attr('id'));
    });
 
-   $('.elim').click(function(){
+   $('.elim').click(function(e){
+      e.preventDefault();
       eliminaritems($(this).attr('id'));
     });
-    $('.limpiar').click(function(){
+    $('.limpiar').click(function(e){
+      e.preventDefault();
       eliminartodo();
     });
  });
+
+function esEntero(valor)
+{
+  return /^[0-9]{1,10}$/.test(String(valor));
+}
 
 function agregaritems(id)
 {
@@ -34,26 +51,27 @@ function agregaritems(id)
 
 function eliminaritems(pos)
 {
-	$.ajax({
-            type: "POST",
-            url: 'carrito.php',
-            data: "op=2&pos="+pos,
-            success: function(response)
-            {
-				location.reload();
-            }
-       });
+  if (!esEntero(pos)) { return; }
+  $.ajax({
+    type: "POST",
+    url: 'carrito.php',
+    data: { op: 2, pos: pos },
+    success: function()
+    {
+      location.reload();
+    }
+  });
 }
 
 function eliminartodo()
 {
-	$.ajax({
-            type: "POST",
-            url: 'carrito.php',
-            data: "op=3",
-            success: function(response)
-            {
-				location.reload();
-            }
-       });
+  $.ajax({
+    type: "POST",
+    url: 'carrito.php',
+    data: { op: 3 },
+    success: function()
+    {
+      location.reload();
+    }
+  });
 }

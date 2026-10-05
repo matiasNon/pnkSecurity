@@ -19,7 +19,7 @@ $carrito = (isset($_SESSION['carrito']) && is_array($_SESSION['carrito'])) ? $_S
 
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -105,7 +105,7 @@ $carrito = (isset($_SESSION['carrito']) && is_array($_SESSION['carrito'])) ? $_S
                   <tbody>
                      <?php
                      $total=0;
-                     foreach ($_SESSION["carrito"] as $value) 
+                     foreach ($carrito as $value)
                      {
                      ?>
                      <tr>
@@ -154,7 +154,6 @@ $carrito = (isset($_SESSION['carrito']) && is_array($_SESSION['carrito'])) ? $_S
   <script src="vendors/owl-carousel/owl.carousel.min.js"></script>
   <script src="vendors/nice-select/jquery.nice-select.min.js"></script>
   <script src="vendors/Magnific-Popup/jquery.magnific-popup.min.js"></script>
-  <script src="js/jquery.ajaxchimp.min.js"></script>
   <script src="js/main.js"></script>
   <script src="js/controladorajax.js"></script>
 </body>
