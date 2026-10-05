@@ -68,8 +68,11 @@ if ($control['bloqueado']) {
     redirigir($destino . 'login=bloqueado');
 }
 
-// Nota: si las claves pasan a hash, conviene ejecutar password_verify() contra un hash señuelo
-// cuando el usuario no existe, para igualar los tiempos de respuesta.
+// Si la cuenta no existe se verifica contra un hash señuelo para que el tiempo de respuesta no revele
+// qué correos están registrados.
+if ($fila === null) {
+    password_verify($password, '$2y$12$bKKHi07bMX8Ubs1yAyVigOWhcIaSto3Df5kCjvqrFOlZEmFLr8J.K');
+}
 $valido = $fila !== null && verificar_password($password, (string) $fila['password']);
 
 if (!$valido) {
