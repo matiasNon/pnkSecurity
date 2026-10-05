@@ -2,14 +2,6 @@
 # Date: 2020-11-05 00:16:07
 # Generator: MySQL-Front 6.0  (Build 2.20)
 
-# ==============================================================================
-# DIFERENCIA PRINCIPAL:
-# En la tabla "usuarios" se incluye:
-#   UNIQUE KEY `uq_usuarios_email` (`email`)
-# Esto asegura la unicidad del correo electrónico e indexa el campo para búsquedas.
-# El resto del esquema y los datos son 100% idénticos.
-# ==============================================================================
-
 CREATE DATABASE `pnk_security` DEFAULT CHARACTER SET latin1 COLLATE latin1_spanish_ci;
 
 #
@@ -168,8 +160,7 @@ CREATE TABLE `usuarios` (
   `email` varchar(255) COLLATE utf8_spanish_ci DEFAULT NULL,
   `password` varchar(255) COLLATE utf8_spanish_ci DEFAULT NULL,
   `estado` varchar(255) COLLATE utf8_spanish_ci DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  UNIQUE KEY `uq_usuarios_email` (`email`)
+  PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
 #
