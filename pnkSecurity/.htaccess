@@ -1,0 +1,36 @@
+# Endurecimiento de Apache para pnkSecurity.
+# Requiere que el host virtual permita overrides (AllowOverride All, o al menos Options,
+# FileInfo y Limit).
+
+# Sin listado de directorios (imagenes/, vendors/, js/, ...)
+Options -Indexes
+
+<IfModule mod_authz_core.c>
+    # setup.php es una biblioteca: solo se incluye desde PHP, no debe ejecutarse por HTTP.
+    <FilesMatch "^setup\.php$">
+        Require all denied
+    </FilesMatch>
+
+    # Archivos que nunca deben servirse por HTTP: scripts SQL, notas, respaldos, logs,
+    # configuración y variables de entorno, e instaladores que no forman parte del sitio.
+    <FilesMatch "(\.(sql|md|bak|orig|log|example|env)$|^config\.local\.php.*$|^install\.php$|^settings\.php$)">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+# Ocultar la versión de PHP cuando mod_headers está disponible.
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
+</IfModule>
+
+# Al visitar la raíz del sitio sin ruta ni parámetros (ej. http://localhost:8089/), mostrar
+# la carta del restaurante 1 en vez de un 404. A propósito solo coincide con la raíz vacía
+# (RewriteCond sobre REQUEST_URI y QUERY_STRING): una regla más amplia como "^(.*)$" reescribe
+# TODA petición (CSS, JS, imágenes, y los POST de login/carrito/comentarios) hacia index.php,
+# dejando la aplicación inservible.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} ^/$
+    RewriteCond %{QUERY_STRING} ^$
+    RewriteRule ^$ index.php?id=1 [L]
+</IfModule>

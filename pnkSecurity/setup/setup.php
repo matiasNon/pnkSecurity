@@ -1,4 +1,71 @@
 <?php
+/**
+ * Núcleo de seguridad de pnkSecurity.
+ *
+ * Todas las páginas incluyen este archivo. Centraliza: manejo de errores,
+ * conexión a BD, consultas parametrizadas, escape de salida, sesión endurecida,
+ * protección CSRF y cabeceras HTTP de seguridad.
+ */
+
+// --- Errores: nunca mostrar detalles técnicos al usuario (A.8.28 / ASVS V16) ---
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+// Requisitos mínimos: con PHP < 7.3 las opciones de la cookie de sesión (HttpOnly/SameSite) se
+// ignorarían en silencio, así que se prefiere fallar de forma controlada.
+if (PHP_VERSION_ID < 70300 || !extension_loaded('mysqli') || !extension_loaded('mbstring')) {
+    error_log('[pnkSecurity] Requisitos no cumplidos: PHP >= 7.3 con las extensiones mysqli y mbstring.');
+    if (PHP_SAPI !== 'cli' && !headers_sent()) {
+        http_response_code(500);
+    }
+    exit('Error de configuración del servidor.');
+}
+
+set_exception_handler(function (Throwable $t) {
+    error_log('[pnkSecurity] ' . get_class($t) . ': ' . $t->getMessage() . ' @ ' . $t->getFile() . ':' . $t->getLine());
+    if (PHP_SAPI === 'cli') {
+        fwrite(STDERR, "Error: " . $t->getMessage() . PHP_EOL);
+        exit(1);
+    }
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: text/html; charset=UTF-8');
+    }
+    echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Error</title></head>'
+       . '<body><h1>Ha ocurrido un error</h1><p>Intente nuevamente más tarde.</p></body></html>';
+    exit;
+});
+
+function es_https(): bool
+{
+    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['SERVER_PORT'] ?? '') === '443');
+}
+
+// --- Cabeceras de seguridad (ASVS V3 / V13) ---
+function enviar_cabeceras_seguridad(): void
+{
+    if (PHP_SAPI === 'cli' || headers_sent()) {
+        return;
+    }
+    header_remove('X-Powered-By');
+    header("Content-Security-Policy: default-src 'self'; script-src 'self'; "
+         . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+         . "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:; "
+         . "connect-src 'self'; object-src 'none'; base-uri 'self'; "
+         . "form-action 'self'; frame-ancestors 'none'");
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: geolocation=(), camera=(), microphone=()');
+    header('Cache-Control: no-store');
+    if (es_https()) {
+        header('Strict-Transport-Security: max-age=31536000');
+    }
+}
+enviar_cabeceras_seguridad();
 
 // --- Conexión a BD ---
 // Los valores por defecto son los que usaba la aplicación (la BD no se modifica). Se pueden
