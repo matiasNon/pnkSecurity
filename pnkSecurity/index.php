@@ -147,10 +147,13 @@ if ($datos_restorant === null) {
   </section>
   <!--DESTACADOS-->
   <?php
-  $sql="SELECT items.id,items.visible,items.tiempo,items.puntuacion,items.destacado, items.precio, items.descripcion,items.observaciones, items.nombre, items.foto, items.orden, cartas.restautantes_id, categorias.visible FROM categorias INNER JOIN items ON items.categorias_id = categorias.id INNER JOIN cartas ON categorias.cartas_id = cartas.id
-  WHERE items.destacado = 1 AND items.eliminado IS NULL AND items.visible=1 AND cartas.restautantes_id = ".$key." AND cartas.eliminada IS NULL AND categorias.visible = 1 AND categorias.eliminado IS NULL";
-  $result=mysqli_query(conectar(),$sql);
-  $cont_destacados=mysqli_num_rows($result);
+  $filas_destacados = consultar(
+    "SELECT items.id,items.tiempo,items.puntuacion,items.destacado, items.precio, items.descripcion,items.observaciones, items.nombre, items.foto, items.orden, cartas.restautantes_id FROM categorias INNER JOIN items ON items.categorias_id = categorias.id INNER JOIN cartas ON categorias.cartas_id = cartas.id
+  WHERE items.destacado = 1 AND items.eliminado IS NULL AND items.visible=1 AND cartas.restautantes_id = ? AND cartas.eliminada IS NULL AND categorias.visible = 1 AND categorias.eliminado IS NULL",
+    'i',
+    [$key]
+  );
+  $cont_destacados=count($filas_destacados);
   if( $cont_destacados!=0)
   {
   ?>
@@ -228,10 +231,12 @@ if ($datos_restorant === null) {
                   <nav>
                     <div class="nav nav-tabs nav-fill" id="nav-tab" role="tablist">
                         <?php
-                            $sqlcartas="SELECT cartas.id,cartas.restautantes_id,cartas.nombre,cartas.orden,cartas.visible FROM cartas WHERE cartas.restautantes_id = ".$key." and visible=1 AND eliminada IS NULL order by orden asc";
-                            $resultcartas=mysqli_query(conectar(),$sqlcartas);
-                            $arraycartas=[];
-                            while($cartas=mysqli_fetch_array($resultcartas))
+                            $arraycartas = consultar(
+                              "SELECT cartas.id,cartas.nombre FROM cartas WHERE cartas.restautantes_id = ? and visible=1 AND eliminada IS NULL order by orden asc",
+                              'i',
+                              [$key]
+                            );
+                            foreach($arraycartas as $cartas)
                             {
                               array_push($arraycartas,['nombre'=>utf8_encode(quitarespacios($cartas['nombre'])),'id'=>$cartas['id']]);
                             ?>
@@ -397,8 +402,8 @@ if(isset($key))
              ?>
              <form action="grcomentarios.php" method="post">
               <div class="form-group">
-                <label for="usr">Nombre:</label>
-                <input type="text" class="form-control" id="usuario" name="usuario" value="<?php echo $_SESSION['nombre'];?>">
+                <label for="usuario">Nombre:</label>
+                <input type="text" class="form-control" id="usuario" value="<?php echo e($_SESSION['nombre']);?>" readonly>
               </div>
               <div class="form-group">
                 <label for="comment">Comentario:</label>
@@ -413,9 +418,13 @@ if(isset($key))
           <br>
           <?php
 
-            $sqlcomentarios="select * from comentarios where id_restaurante=".$key;
-            $resultcomentarios=mysqli_query(conectar(),$sqlcomentarios);
-            while($datoscomentarios=mysqli_fetch_array($resultcomentarios))
+            $filas_comentarios = consultar(
+              // Se muestran los últimos 100 comentarios (en orden cronológico) para acotar el tamaño de la página.
+              "select usuario, comentario from (select Id, usuario, comentario from comentarios where id_restaurante = ? order by Id desc limit 100) ultimos order by Id asc",
+              'i',
+              [$key]
+            );
+            foreach($filas_comentarios as $datoscomentarios)
             {
           ?>
           <div class="card bg-light">

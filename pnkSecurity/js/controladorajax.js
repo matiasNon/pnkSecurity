@@ -15,15 +15,16 @@ $(document).ready(function(){
 
 function agregaritems(id)
 {
-	$.ajax({
-            type: "POST",
-            url: 'carrito.php',
-            data: "op=1&iditems="+id,
-            success: function(response)
-            {
-				$('#myModal').modal('show');
-            }
-       });
+  if (!esEntero(id)) { return; }
+  $.ajax({
+    type: "POST",
+    url: 'carrito.php',
+    data: { op: 1, iditems: id, rid: $('meta[name="restaurante-id"]').attr('content') },
+    success: function()
+    {
+      $('#myModal').modal('show');
+    }
+  });
 }
 
 function eliminaritems(pos)
