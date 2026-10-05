@@ -1,9 +1,41 @@
 <?php
 
-function conectar()
+function conectar(): mysqli
 {
-    $con=mysqli_connect("localhost","root","","pnk_security");
+    static $con = null;
+    if ($con instanceof mysqli) {
+        return $con;
+    }
+    $cfg = ['host'=>'localhost','name'=>'pnk_security','user'=>'root','pass'=>'','port'=>3306];
+    $con = new mysqli($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], $cfg['port']);
+    $con->set_charset('utf8mb4');
     return $con;
+}
+
+/** SELECT parametrizado: devuelve todas las filas como arreglos asociativos. */
+function consultar(string $sql, string $tipos = '', array $params = []): array
+{
+    $stmt = conectar()->prepare($sql);
+    if ($tipos !== '') {
+        $stmt->bind_param($tipos, ...$params);
+    }
+    $stmt->execute();
+    $filas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return $filas;
+}
+
+/** INSERT/UPDATE/DELETE parametrizado: devuelve las filas afectadas. */
+function ejecutar(string $sql, string $tipos = '', array $params = []): int
+{
+    $stmt = conectar()->prepare($sql);
+    if ($tipos !== '') {
+        $stmt->bind_param($tipos, ...$params);
+    }
+    $stmt->execute();
+    $afectadas = $stmt->affected_rows;
+    $stmt->close();
+    return $afectadas;
 }
 
 function quitarespacios($titulo)
@@ -29,4 +61,3 @@ function moneda_chilena($numero){
     return $formateado;
     }
 
-?>

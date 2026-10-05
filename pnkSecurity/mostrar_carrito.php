@@ -2,12 +2,20 @@
 include("setup/setup.php");
 session_start();
 
-$key=$_GET['id'];
-
-$sql_restorant="SELECT direcciones.calle, direcciones.numero, direcciones.comuna, direcciones.region, restautantes.nombre, restautantes.id, restautantes.fono, restautantes.email, restautantes.foto FROM restautantes INNER JOIN direcciones ON restautantes.direcciones_id =
-direcciones.id WHERE restautantes.id = ".$key;
-$result_restorant=mysqli_query(conectar(),$sql_restorant);
-$datos_restorant=mysqli_fetch_array($result_restorant);
+// El enlace desde la carta envía "keyid"; se acepta también "id". Sólo enteros válidos.
+$key = entero_get('keyid') ?? entero_get('id');
+$datos_restorant = null;
+if ($key !== null) {
+  $datos_restorant = consultar(
+    "SELECT direcciones.calle, direcciones.numero, direcciones.comuna, direcciones.region, restautantes.nombre, restautantes.id, restautantes.fono, restautantes.email, restautantes.foto FROM restautantes INNER JOIN direcciones ON restautantes.direcciones_id = direcciones.id WHERE restautantes.id = ? AND restautantes.eliminado IS NULL",
+    'i',
+    [$key]
+  )[0] ?? null;
+}
+if ($datos_restorant === null) {
+  responder_error(404, 'Restaurante no encontrado');
+}
+$carrito = (isset($_SESSION['carrito']) && is_array($_SESSION['carrito'])) ? $_SESSION['carrito'] : [];
 
 ?>
 <!DOCTYPE html>

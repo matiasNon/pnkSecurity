@@ -3,16 +3,19 @@
 include("setup/setup.php");
 session_start();
 
-mysqli_set_charset(conectar(), 'utf8');
-$key=$_GET['id'];
-$_SESSION['id']=$_GET['id'];
-
-$sql_restorant="SELECT direcciones.calle, direcciones.numero, direcciones.comuna, direcciones.region, restautantes.nombre, restautantes.id, restautantes.fono, restautantes.email, restautantes.foto FROM restautantes INNER JOIN direcciones ON restautantes.direcciones_id =
-direcciones.id WHERE restautantes.id = ".$key." AND restautantes.eliminado IS NULL";
-$result_restorant=mysqli_query(conectar(),$sql_restorant);
-$datos_restorant=mysqli_fetch_array($result_restorant);
-
-
+// El identificador del restaurante se valida como entero y se consulta con parámetros.
+$key = entero_get('id');
+$datos_restorant = null;
+if ($key !== null) {
+  $datos_restorant = consultar(
+    "SELECT direcciones.calle, direcciones.numero, direcciones.comuna, direcciones.region, restautantes.nombre, restautantes.id, restautantes.fono, restautantes.email, restautantes.foto FROM restautantes INNER JOIN direcciones ON restautantes.direcciones_id = direcciones.id WHERE restautantes.id = ? AND restautantes.eliminado IS NULL",
+    'i',
+    [$key]
+  )[0] ?? null;
+}
+if ($datos_restorant === null) {
+  responder_error(404, 'Restaurante no encontrado');
+}
 
 ?>
 <!DOCTYPE html>
@@ -245,9 +248,12 @@ $datos_restorant=mysqli_fetch_array($result_restorant);
                     ?>
                     <div class="tab-pane fade <?php if($i==0){?>show active<?php } ?>" id="<?php echo quitarespacios($arraycartas[$i]["nombre"]);?>" role="tabpanel" aria-labelledby="nav-<?php echo quitarespacios($arraycartas[$i]["nombre"]);?>-tab">              
                       <?php
-                          $sql_categorias="select id,nombre from categorias where visible=1 and cartas_id='".$arraycartas[$i]["id"]."' AND eliminado IS NULL order by orden asc";
-                          $result_categorias=mysqli_query(conectar(),$sql_categorias);
-                          $cont_categorias=mysqli_num_rows($result_categorias);
+                          $filas_categorias = consultar(
+                            "select id,nombre from categorias where visible=1 and cartas_id=? AND eliminado IS NULL order by orden asc",
+                            'i',
+                            [(int)$panel['id']]
+                          );
+                          $cont_categorias=count($filas_categorias);
                           if($cont_categorias==0)
                           {?>
                               <div class="row">
@@ -268,9 +274,12 @@ $datos_restorant=mysqli_fetch_array($result_restorant);
 
                                 <div class="row">
                                   <?php
-                                      $sql_items="SELECT items.visible,items.id, items.nombre, items.descripcion,items.observaciones,items.tiempo,items.puntuacion, items.precio, items.visible, items.foto, items.orden, items.categorias_id FROM items WHERE items.categorias_id = ".$datos_categorias['id']." AND items.visible=1 AND eliminado IS NULL order by orden asc";
-                                      $result_items=mysqli_query(conectar(),$sql_items);
-                                      $count_items=mysqli_num_rows($result_items);
+                                      $filas_items = consultar(
+                                        "SELECT items.id, items.nombre, items.descripcion,items.observaciones,items.tiempo,items.puntuacion, items.precio, items.foto, items.orden, items.categorias_id FROM items WHERE items.categorias_id = ? AND items.visible=1 AND eliminado IS NULL order by orden asc",
+                                        'i',
+                                        [(int)$datos_categorias['id']]
+                                      );
+                                      $count_items=count($filas_items);
                                       if($count_items!=0)
                                       {
                                             while($datos_items=mysqli_fetch_array($result_items))
