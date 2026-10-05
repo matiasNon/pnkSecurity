@@ -1,12 +1,38 @@
 <?php
 
+// --- Conexión a BD ---
+// Los valores por defecto son los que usaba la aplicación (la BD no se modifica). Se pueden
+// sobrescribir con variables de entorno del servidor (PNK_DB_HOST, PNK_DB_NAME, PNK_DB_USER,
+// PNK_DB_PASS, PNK_DB_PORT), por ejemplo para usar un usuario de BD de menor privilegio
+// el día que se decida crearlo.
+/** Lee una variable PNK_* del entorno del proceso o de SetEnv de Apache (que según el SAPI llega por $_SERVER). */
+function env_pnk(string $nombre): string
+{
+    $v = getenv($nombre);
+    if ($v === false || $v === '') {
+        $v = $_SERVER[$nombre] ?? '';
+    }
+    return is_string($v) ? $v : '';
+}
+
+function cargar_config_bd(): array
+{
+    return [
+        'host' => env_pnk('PNK_DB_HOST') ?: 'localhost',
+        'name' => env_pnk('PNK_DB_NAME') ?: 'pnk_security',
+        'user' => env_pnk('PNK_DB_USER') ?: 'root',
+        'pass' => env_pnk('PNK_DB_PASS'),
+        'port' => (int) (env_pnk('PNK_DB_PORT') ?: 3306),
+    ];
+}
+
 function conectar(): mysqli
 {
     static $con = null;
     if ($con instanceof mysqli) {
         return $con;
     }
-    $cfg = ['host'=>'localhost','name'=>'pnk_security','user'=>'root','pass'=>'','port'=>3306];
+    $cfg = cargar_config_bd();
     $con = new mysqli($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], $cfg['port']);
     $con->set_charset('utf8mb4');
     return $con;
