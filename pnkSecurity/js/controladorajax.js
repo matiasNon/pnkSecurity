@@ -1,5 +1,10 @@
 // JavaScript Document
 
+// El token CSRF lo entrega el servidor en <meta name="csrf-token">; se envía en cada petición.
+$.ajaxSetup({
+  headers: { 'X-CSRF-Token': $('meta[name="csrf-token"]').attr('content') || '' }
+});
+
 $(document).ready(function(){
    $('.button').click(function(){
      agregaritems($(this).attr('id'));

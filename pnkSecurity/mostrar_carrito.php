@@ -24,7 +24,9 @@ $carrito = (isset($_SESSION['carrito']) && is_array($_SESSION['carrito'])) ? $_S
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title><?php echo $datos_restorant['nombre'];?></title>
+  <meta name="csrf-token" content="<?php echo e(csrf_token());?>">
+  <meta name="restaurante-id" content="<?php echo (int)$key;?>">
+  <title><?php echo e($datos_restorant['nombre']);?></title>
 	<!--<link rel="icon" href="img/Fevicon.png" type="image/png">-->
 
   <link rel="stylesheet" href="vendors/bootstrap/bootstrap.min.css">

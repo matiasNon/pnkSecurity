@@ -115,3 +115,24 @@ function usuario_autenticado(): bool
     return isset($_SESSION['uid']) && is_int($_SESSION['uid']);
 }
 
+// --- CSRF (ASVS V3): token por sesión, comparación en tiempo constante ---
+function csrf_token(): string
+{
+    iniciar_sesion();
+    if (empty($_SESSION['csrf'])) {
+        $_SESSION['csrf'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf'];
+}
+
+function csrf_campo(): string
+{
+    return '<input type="hidden" name="csrf" value="' . e(csrf_token()) . '">';
+}
+
+function csrf_validar(): bool
+{
+    iniciar_sesion();
+    $enviado = $_POST['csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+    return is_string($enviado) && isset($_SESSION['csrf']) && hash_equals($_SESSION['csrf'], $enviado);
+}

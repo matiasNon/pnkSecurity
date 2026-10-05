@@ -24,7 +24,9 @@ if ($datos_restorant === null) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title><?php echo utf8_encode($datos_restorant['nombre']);?></title>
+  <meta name="csrf-token" content="<?php echo e(csrf_token());?>">
+  <meta name="restaurante-id" content="<?php echo (int)$key;?>">
+  <title><?php echo e($datos_restorant['nombre']);?></title>
 	<!--<link rel="icon" href="img/Fevicon.png" type="image/png">-->
 
   <link rel="stylesheet" href="vendors/bootstrap/bootstrap.min.css">
@@ -41,6 +43,8 @@ if ($datos_restorant === null) {
     {
     ?>
       <form class="form-inline" role="search" action="setup/procesalogin.php" method="post">
+        <?php echo csrf_campo();?>
+        <input type="hidden" name="id" value="<?php echo (int)$key;?>">
         <div class="form-group">
           <div class="input-group-prepend">
             <span class="input-group-text" id="basic-addon1">@</span>
@@ -52,9 +56,27 @@ if ($datos_restorant === null) {
         </div>
         <button type="submit" class="btn btn-outline-primary my-2 my-sm-0">Ingresar</button>
       </form>
-    <?php
+      <?php
+      $mensajes_login = [
+        'error'     => 'Usuario o contraseña incorrectos.',
+        'bloqueado' => 'Demasiados intentos fallidos. Intente nuevamente en unos minutos.',
+        'csrf'      => 'La solicitud expiró. Intente nuevamente.',
+      ];
+      $login = $_GET['login'] ?? '';
+      if (is_string($login) && isset($mensajes_login[$login])) {
+      ?>
+        <span class="text-danger ml-3" role="alert"><?php echo e($mensajes_login[$login]);?></span>
+      <?php
+      }
     }else{
-      echo "Bienvenido :".$_SESSION['nombre']." - <a href=setup/cerrar_sesion.php>Cerra Sesión</a>";
+      ?>
+      <span>Bienvenido: <?php echo e($_SESSION['nombre']);?></span>
+      <form class="form-inline" action="setup/cerrar_sesion.php" method="post">
+        <?php echo csrf_campo();?>
+        <input type="hidden" name="id" value="<?php echo (int)$key;?>">
+        <button type="submit" class="btn btn-link">Cerrar sesión</button>
+      </form>
+      <?php
     }
   ?>
 </nav>
@@ -401,10 +423,25 @@ if(isset($key))
           <div class="section-intro">
             <h4 class="intro-title">Comentarios</h4>
              <?php
-            if(isset($_SESSION['nombre']))
+            $mensajes_comentario = [
+              'ok'       => ['success', 'Comentario publicado.'],
+              'csrf'     => ['warning', 'Su sesión expiró. Inicie sesión e intente comentar nuevamente.'],
+              'invalido' => ['danger',  'El comentario no puede estar vacío ni superar 1000 caracteres.'],
+              'espera'   => ['warning', 'Espere unos segundos antes de publicar otro comentario.'],
+              'error'    => ['danger',  'No se pudo publicar el comentario. Intente nuevamente.'],
+            ];
+            $estado_comentario = $_GET['c'] ?? '';
+            if (is_string($estado_comentario) && isset($mensajes_comentario[$estado_comentario])) {
+              ?>
+              <div class="alert alert-<?php echo e($mensajes_comentario[$estado_comentario][0]);?>" role="alert"><?php echo e($mensajes_comentario[$estado_comentario][1]);?></div>
+              <?php
+            }
+            if(usuario_autenticado())
             {
              ?>
              <form action="grcomentarios.php" method="post">
+              <?php echo csrf_campo();?>
+              <input type="hidden" name="id" value="<?php echo (int)$key;?>">
               <div class="form-group">
                 <label for="usuario">Nombre:</label>
                 <input type="text" class="form-control" id="usuario" value="<?php echo e($_SESSION['nombre']);?>" readonly>
