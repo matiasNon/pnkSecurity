@@ -1,9 +1,8 @@
 .claude/
 .gitignore
 
-# Informes de auditoría/remediación: se quedan locales, no se suben al repositorio
+# Informe técnico de pentesting: se queda local, no se sube al repositorio
 INFORME_TECNICO_pnkSecurity.docx
-INFORME_REMEDIACION_pnkSecurity.docx
 
 # Evidencia que verificacion_seguridad.py genera solo si se le pide con --export-json
 evidencia_verificacion_*.json
