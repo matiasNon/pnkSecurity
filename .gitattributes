@@ -1,0 +1,3 @@
+# Las librerías de terceros se guardan y se sirven byte a byte: el hash SRI de index.php y
+# mostrar_carrito.php depende de que no se conviertan los saltos de línea (autocrlf en Windows).
+pnkSecurity/vendors/** -text

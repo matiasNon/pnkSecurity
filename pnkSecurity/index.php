@@ -29,10 +29,10 @@ if ($datos_restorant === null) {
   <title><?php echo e($datos_restorant['nombre']);?></title>
 	<!--<link rel="icon" href="img/Fevicon.png" type="image/png">-->
 
-  <link rel="stylesheet" href="vendors/bootstrap/bootstrap.min.css">
-  <link rel="stylesheet" href="vendors/themify-icons/themify-icons.css">
-  <link rel="stylesheet" href="vendors/owl-carousel/owl.theme.default.min.css">
-  <link rel="stylesheet" href="vendors/owl-carousel/owl.carousel.min.css">
+  <link rel="stylesheet" href="vendors/bootstrap/bootstrap.min.css" integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N">
+  <link rel="stylesheet" href="vendors/themify-icons/themify-icons.css" integrity="sha384-WvewGOCiLQQeyX74sRin+1vJVwXiQljXEll4oRenlaV/JugxUgA+KejVo+KeVA/8">
+  <link rel="stylesheet" href="vendors/owl-carousel/owl.theme.default.min.css" integrity="sha384-8/AzSKHReNfZT4HGFTyRyJ1jXhhx/ZMnmX08Cy6TeaKWj0Vzho0AabG06C8mh02i">
+  <link rel="stylesheet" href="vendors/owl-carousel/owl.carousel.min.css" integrity="sha384-kcNNzf7wI8//ZkNUaDd5JwxLoFaBgkj9Z4O4NwtuX9Lkmsz0HoITOxJsGkYxDuyG">
 
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -501,11 +501,11 @@ if(isset($key))
 	</footer>
 
 
-  <script src="vendors/jquery/jquery-3.7.1.min.js"></script>
-  <script src="vendors/bootstrap/bootstrap.bundle.min.js"></script>
-  <script src="vendors/owl-carousel/owl.carousel.min.js"></script>
-  <script src="vendors/nice-select/jquery.nice-select.min.js"></script>
-  <script src="vendors/Magnific-Popup/jquery.magnific-popup.min.js"></script>
+  <script src="vendors/jquery/jquery-3.7.1.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs"></script>
+  <script src="vendors/bootstrap/bootstrap.bundle.min.js" integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct"></script>
+  <script src="vendors/owl-carousel/owl.carousel.min.js" integrity="sha384-l/y5WJTphApmSlx76Ev6k4G3zxu/+19CVvn9OTKI7gs4Yu5Hm8mjpdtdr5oyhnNo"></script>
+  <script src="vendors/nice-select/jquery.nice-select.min.js" integrity="sha384-m59ELcUP6nH7EgbLpXNSk+MEGN3hqBjmLCs8ujOhOFx83BrYQfsHqqoVzxKRDNTq"></script>
+  <script src="vendors/Magnific-Popup/jquery.magnific-popup.min.js" integrity="sha384-fexNtx3nPE3sjIQuGk8G2X8X/aSEBVMC58R839hkgsY/Xjhvkm7m2otGhwrdESWj"></script>
   <script src="js/main.js"></script>
   <script src="js/controladorajax.js"></script>
 </body>

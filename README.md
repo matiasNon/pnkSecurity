@@ -161,7 +161,7 @@ php -S 127.0.0.1:8000 -t pnkSecurity
 - **Usuario de BD:** por defecto la conexión usa `root` sin contraseña (para no romper el entorno de laboratorio). Con `PNK_ENV=production` la aplicación se niega a conectarse así y registra el intento; en producción hay que crear un usuario con privilegios mínimos y definir `PNK_DB_*`.
 - **Contadores de intentos de login:** se guardan en un archivo temporal local; con varias instancias detrás de un balanceador cada una lleva su propia cuenta.
 - **CSP:** la política ya no permite `'unsafe-inline'` ni dominios externos (los estilos en línea pasaron a clases de `css/style.css` y se quitó Google Fonts: los textos usan las fuentes del sistema como respaldo).
-- **SRI:** no se usa en recursos de terceros porque la aplicación ya no carga ninguno; todo es local (`'self'`).
+- **SRI:** las librerías de `vendors/` que cargan `index.php` y `mostrar_carrito.php` llevan `integrity="sha384-..."`. Si actualizas una de ellas, recalcula el hash: `openssl dgst -sha384 -binary <archivo> | openssl base64 -A`. El `.gitattributes` evita que Git convierta los saltos de línea de `vendors/` (en Windows con `autocrlf` el hash dejaría de coincidir).
 
 ## 👥 Integrantes
 
