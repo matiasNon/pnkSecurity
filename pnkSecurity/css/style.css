@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css?family=Open+Sans:400,600");
-@import url("https://fonts.googleapis.com/css?family=Josefin+Sans:400,600,700");
 body {
 	color: #336699;
 	font-family: "Open Sans", sans-serif;
@@ -3042,4 +3040,13 @@ button.button {
 .footer-area .footer-bottom .footer-social a i,
 .footer-area .footer-bottom .footer-social a span {
 	font-size: 14px
+}
+
+/* Clases que reemplazan estilos en línea (permite una CSP sin 'unsafe-inline') */
+.centrado {
+	text-align: center
+}
+
+.sin-margen {
+	margin: 0
 }

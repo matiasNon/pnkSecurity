@@ -41,14 +41,14 @@ $carrito = (isset($_SESSION['carrito']) && is_array($_SESSION['carrito'])) ? $_S
     <div class="container contendor">
       <div class="row">
         <div class="col-lg-4">
-          <div style="text-align: center;">
+          <div class="centrado">
             <div class="media">
               <img class="logosintituciones" src="img/logo.png" width="170px" alt="">
             </div><br><br>
           </div>  
         </div>
         <div class="col-lg-4">
-          <div style="text-align: center;">
+          <div class="centrado">
             
             <?php
               $foto_restorant = ruta_foto($key, $datos_restorant['foto']);
@@ -84,7 +84,7 @@ $carrito = (isset($_SESSION['carrito']) && is_array($_SESSION['carrito'])) ? $_S
     <div class="container contendor">
       <div class="row">
         <div class="col-lg-12">
-         <h4 class="intro-title" style="text-align: center">Productos Agregados para Solicitar</h4>
+         <h4 class="intro-title centrado">Productos Agregados para Solicitar</h4>
         </div>
       </div>
     </div>

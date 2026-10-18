@@ -84,14 +84,14 @@ if ($datos_restorant === null) {
     <div class="container contendor">
       <div class="row">
         <div class="col-lg-4">
-          <div style="text-align: center;">
+          <div class="centrado">
             <div class="media">
               <img class="logosintituciones" src="img/logo.png" width="190px" alt="">
             </div>
           </div>  
         </div>
         <div class="col-lg-4">
-          <div style="text-align: center;">
+          <div class="centrado">
             <div class="media">
               <?php
               $foto_restorant = ruta_foto($key, $datos_restorant['foto']);
@@ -235,7 +235,7 @@ if ($datos_restorant === null) {
               <h3 class="price-tag"><?php             
               echo moneda_chilena($destacados['precio']);?></h3>
             </div>
-            <a class="button" href="#" id="<?php echo (int)$destacados['id'];?>" style="margin:0%">Seleccionar</a>
+            <a class="button sin-margen" href="#" id="<?php echo (int)$destacados['id'];?>">Seleccionar</a>
           </div>
         </div>
       <?php

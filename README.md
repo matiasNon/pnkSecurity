@@ -160,7 +160,8 @@ php -S 127.0.0.1:8000 -t pnkSecurity
 - **Contraseñas en texto plano:** la base de datos no se modifica, así que las claves de `usuarios` siguen guardadas sin hash. El código ya usa `password_verify()` si encuentra un hash, por lo que migrarlas a futuro no requiere cambios en la aplicación.
 - **Usuario de BD:** por defecto la conexión usa `root` sin contraseña (para no romper el entorno de laboratorio). Con `PNK_ENV=production` la aplicación se niega a conectarse así y registra el intento; en producción hay que crear un usuario con privilegios mínimos y definir `PNK_DB_*`.
 - **Contadores de intentos de login:** se guardan en un archivo temporal local; con varias instancias detrás de un balanceador cada una lleva su propia cuenta.
-- **CSP:** los estilos aún permiten `'unsafe-inline'` y no se usa SRI en recursos de terceros.
+- **CSP:** la política ya no permite `'unsafe-inline'` ni dominios externos (los estilos en línea pasaron a clases de `css/style.css` y se quitó Google Fonts: los textos usan las fuentes del sistema como respaldo).
+- **SRI:** no se usa en recursos de terceros porque la aplicación ya no carga ninguno; todo es local (`'self'`).
 
 ## 👥 Integrantes
 
