@@ -143,6 +143,7 @@ php -S 127.0.0.1:8000 -t pnkSecurity
 | `PNK_DB_USER` | Usuario de la base de datos | `root` |
 | `PNK_DB_PASS` | Contraseña de la base de datos | *(vacía)* |
 | `PNK_DB_PORT` | Puerto de la base de datos | `3306` |
+| `PNK_ENV` | `production` rechaza la conexión a la BD como `root` sin contraseña | *(vacío: modo laboratorio)* |
 | `PNK_TRUST_PROXY` | `1` si hay un balanceador que termina HTTPS y envía `X-Forwarded-Proto` | *(desactivado)* |
 
 ## ☁️ Despliegue (AWS)
@@ -154,7 +155,7 @@ php -S 127.0.0.1:8000 -t pnkSecurity
 ## ⚠️ Riesgo residual
 
 - **Contraseñas en texto plano:** la base de datos no se modifica, así que las claves de `usuarios` siguen guardadas sin hash. El código ya usa `password_verify()` si encuentra un hash, por lo que migrarlas a futuro no requiere cambios en la aplicación.
-- **Usuario de BD:** por defecto la conexión usa `root` sin contraseña (para no romper el entorno de laboratorio). En producción hay que crear un usuario con privilegios mínimos y definir `PNK_DB_*`.
+- **Usuario de BD:** por defecto la conexión usa `root` sin contraseña (para no romper el entorno de laboratorio). Con `PNK_ENV=production` la aplicación se niega a conectarse así y registra el intento; en producción hay que crear un usuario con privilegios mínimos y definir `PNK_DB_*`.
 - **Contadores de intentos de login:** se guardan en un archivo temporal local; con varias instancias detrás de un balanceador cada una lleva su propia cuenta.
 - **CSP:** los estilos aún permiten `'unsafe-inline'` y no se usa SRI en recursos de terceros.
 

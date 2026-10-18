@@ -115,6 +115,12 @@ function conectar(): mysqli
         return $con;
     }
     $cfg = cargar_config_bd();
+    // En producción (PNK_ENV=production) no se acepta la cuenta root sin contraseña (valores por
+    // defecto del laboratorio): hay que definir PNK_DB_USER / PNK_DB_PASS con un usuario de mínimo privilegio.
+    if (env_pnk('PNK_ENV') === 'production' && $cfg['user'] === 'root' && $cfg['pass'] === '') {
+        log_seguridad('CONFIG', 'bd_root_sin_clave_rechazada', ['host' => $cfg['host']]);
+        throw new RuntimeException('Configuración de BD no permitida en producción: root sin contraseña.');
+    }
     $con = new mysqli($cfg['host'], $cfg['user'], $cfg['pass'], $cfg['name'], $cfg['port']);
     $con->set_charset('utf8mb4');
     return $con;
