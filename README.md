@@ -144,11 +144,14 @@ php -S 127.0.0.1:8000 -t pnkSecurity
 | `PNK_DB_PASS` | Contraseña de la base de datos | *(vacía)* |
 | `PNK_DB_PORT` | Puerto de la base de datos | `3306` |
 | `PNK_ENV` | `production` rechaza la conexión a la BD como `root` sin contraseña | *(vacío: modo laboratorio)* |
+| `PNK_FORCE_HTTPS` | `1` redirige (301) a HTTPS toda petición GET/HEAD que llegue por HTTP y rechaza (403) los demás métodos | *(desactivado)* |
+| `PNK_HOST` | Nombre de host público (ej. `pnk.example.cl`) al que redirige `PNK_FORCE_HTTPS`; nunca se usa la cabecera `Host` del cliente | *(vacío)* |
 | `PNK_TRUST_PROXY` | `1` si hay un balanceador que termina HTTPS y envía `X-Forwarded-Proto` | *(desactivado)* |
 
 ## ☁️ Despliegue (AWS)
 
-- Detrás de un balanceador (ALB / CloudFront) el HTTPS termina en el balanceador y PHP ve HTTP. Define `PNK_TRUST_PROXY=1` **solo** si el servidor no es accesible directamente: con la variable activa la cookie de sesión lleva `Secure` y se envía HSTS.
+- Detrás de un balanceador (ALB / CloudFront) el HTTPS termina en el balanceador y PHP ve HTTP. Define `PNK_TRUST_PROXY=1` **solo** si el servidor no es accesible directamente: con la variable activa la cookie de sesión lleva `Secure` y se envía HSTS (con `includeSubDomains`).
+- Para obligar a usar HTTPS define además `PNK_FORCE_HTTPS=1` y `PNK_HOST=<tu dominio>`; si falta `PNK_HOST` no se redirige y se registra el error.
 - Usa Apache con `AllowOverride All` para que el `.htaccess` surta efecto.
 - Define las variables `PNK_DB_*` en el servidor, con un usuario de base de datos de mínimo privilegio.
 

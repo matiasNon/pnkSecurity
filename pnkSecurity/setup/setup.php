@@ -77,9 +77,46 @@ function enviar_cabeceras_seguridad(): void
     header('Permissions-Policy: geolocation=(), camera=(), microphone=()');
     header('Cache-Control: no-store');
     if (es_https()) {
-        header('Strict-Transport-Security: max-age=31536000');
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
     }
 }
+
+/**
+ * Con PNK_FORCE_HTTPS=1 toda petición que no llegue por HTTPS se redirige (301) a https://PNK_HOST.
+ * El destino sale de PNK_HOST (configuración del servidor) y nunca de la cabecera Host del cliente,
+ * para que no sirva como redirección abierta. Detrás de un balanceador requiere también PNK_TRUST_PROXY=1.
+ */
+function forzar_https(): void
+{
+    if (PHP_SAPI === 'cli' || env_pnk('PNK_FORCE_HTTPS') !== '1' || es_https()) {
+        return;
+    }
+    $host = env_pnk('PNK_HOST');
+    if (!preg_match('/^[A-Za-z0-9.-]{1,253}(:[0-9]{1,5})?\z/', $host)) {
+        error_log('[pnkSecurity] PNK_FORCE_HTTPS=1 requiere PNK_HOST con un nombre de host válido; no se redirige.');
+        return;
+    }
+    $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    if ($metodo !== 'GET' && $metodo !== 'HEAD') {
+        // Un POST por HTTP ya viajó en claro y una redirección no lo repararía: se rechaza.
+        log_seguridad('SEC', 'https_requerido_rechazado', ['metodo' => $metodo]);
+        responder_error(403, 'Se requiere HTTPS');
+    }
+    $uri = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+    if ($uri === '' || $uri[0] !== '/' || strpbrk($uri, "\r\n") !== false) {
+        $uri = '/';
+    }
+    redirigir_externo('https://' . $host . $uri, 301);
+}
+
+/** Redirección con código HTTP propio hacia una URL construida por el servidor (no por el cliente). */
+function redirigir_externo(string $url, int $codigo): void
+{
+    header('Location: ' . $url, true, $codigo);
+    exit;
+}
+
+forzar_https();
 enviar_cabeceras_seguridad();
 
 // --- Conexión a BD ---
