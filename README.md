@@ -6,7 +6,7 @@
 
 **Menú digital con carrito para restaurantes** — versión *corregida* de una aplicación PHP que se entregó con vulnerabilidades a propósito, trabajada en el Laboratorio de Programación Segura I (INACAP Sede La Serena).
 
-![PHP](https://img.shields.io/badge/PHP-7.3%2B-777BB4?logo=php&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php&logoColor=white)
 ![MariaDB](https://img.shields.io/badge/MariaDB%20%2F%20MySQL-003545?logo=mariadb&logoColor=white)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-4-7952B3?logo=bootstrap&logoColor=white)
 ![jQuery](https://img.shields.io/badge/jQuery-3.7.1-0769AD?logo=jquery&logoColor=white)
@@ -25,6 +25,7 @@
 - [¿Qué hace?](#-qué-hace)
 - [Las dos versiones del proyecto](#-las-dos-versiones-del-proyecto)
 - [Seguridad: qué se corrigió](#-seguridad-qué-se-corrigió)
+- [Trazabilidad por vulnerabilidad](#-trazabilidad-por-vulnerabilidad)
 - [Stack técnico](#-stack-técnico)
 - [Estructura del proyecto](#-estructura-del-proyecto)
 - [Correrlo en local](#-correrlo-en-local)
@@ -62,9 +63,9 @@
 | Rama | Qué contiene |
 |---|---|
 | `main` | La aplicación **original, vulnerable a propósito** (para la fase de pentesting). No usar en producción. |
-| `mejoras-por-vul` | La versión **corregida**, con **un commit por vulnerabilidad** (`VUL-01` a `VUL-12`) para ver cómo se solucionó cada una, más mejoras posteriores (HTTPS tras balanceador, hash señuelo en el login, limpieza) y la documentación. |
+| `mejoras-por-vul` | La versión **corregida**, con **un commit por vulnerabilidad** (`VUL-01` a `VUL-12`) para ver cómo se solucionó cada una, siete mejoras posteriores (M1 a M7) y la documentación en `docs/`. Los commits de VUL-01 a VUL-10 se leen como diff por vulnerabilidad, pero la aplicación se ejecuta completa desde `0fa272c` (VUL-11): ver la [trazabilidad](#-trazabilidad-por-vulnerabilidad). |
 
-Cada corrección está documentada con evidencia antes/después en el *Informe técnico de remediación* del curso.
+Cada corrección está documentada con evidencia antes/después en el [Informe de remediación](docs/INFORME_REMEDIACION_pnkSecurity.docx). Los 20 hallazgos originales del pentesting están en el [Informe técnico](docs/INFORME_TECNICO_pnkSecurity.docx), que además trae un anexo con el commit que corrige cada uno (los 20 hallazgos se agrupan en las 12 VUL de esta tabla).
 
 ## 🔒 Seguridad: qué se corrigió
 
@@ -78,18 +79,49 @@ Cada corrección está documentada con evidencia antes/después en el *Informe t
 | VUL-06 | Sin protección CSRF | A01 | 🟡 Media | Token por sesión validado con `hash_equals()` |
 | VUL-07 | Validación insuficiente de entradas | A06 Insecure Design | 🟡 Media | `entero_get()` / `entero_post()`, límites y tipos |
 | VUL-08 | Contraseñas en texto plano | A04 Cryptographic Failures | 🔴 Crítica | Comparación en tiempo constante (`verificar_password()`); ya acepta hashes. *Parcial: la base de datos no se modifica, ver riesgo residual* |
-| VUL-09 | Credenciales de BD en el código | A02 Security Misconfiguration | 🟠 Alta | Variables de entorno `PNK_DB_*` *(parcial, ver riesgo residual)* |
+| VUL-09 | Credenciales de BD en el código | A02 Security Misconfiguration | 🟠 Alta | Variables de entorno `PNK_DB_*`, rechazo de `root` sin clave con `PNK_ENV=production` y usuario `pnk_app` de mínimo privilegio en el despliegue de AWS |
 | VUL-10 | Sin límite de intentos ni registro | A07 / A09 | 🟡 Media | Bloqueo por cuenta + IP y log de eventos de seguridad |
-| VUL-11 | Errores y cabeceras expuestos | A02 / A10 | 🟢 Baja | CSP, `X-Frame-Options`, `nosniff`, errores genéricos, `.htaccess` |
-| VUL-12 | jQuery 3.2.1 desactualizado | A03 Supply Chain | 🟡 Media | Actualizado a jQuery 3.7.1 |
+| VUL-11 | Errores y cabeceras expuestos | A02 / A10 | 🟢 Baja | CSP sin `unsafe-inline`, `X-Frame-Options`, `nosniff`, HTTPS forzado con HSTS, errores genéricos, `.htaccess` |
+| VUL-12 | jQuery 3.2.1 desactualizado | A03 Supply Chain | 🟡 Media | Actualizado a jQuery 3.7.1 y SRI (`integrity`) en los recursos de `vendors/` |
 
-Después de la remediación se agregaron tres mejoras, cada una en su propio commit: **HTTPS detrás de balanceador** (`PNK_TRUST_PROXY`), **hash señuelo en el login** (no toca la base de datos) y **limpieza del repositorio**.
+Después de la remediación se agregaron siete mejoras, cada una en su propio commit:
+
+| Mejora | Commit | Qué hace |
+|---|---|---|
+| M1 | `6f80567` | HTTPS detrás de un balanceador: `X-Forwarded-Proto` solo se respeta con `PNK_TRUST_PROXY=1` (cookie `Secure` y HSTS) |
+| M2 | `a47e6ba` | Hash señuelo en el login cuando la cuenta no existe (no toca la base de datos) |
+| M3 | `2cb5c71` | Limpieza del repositorio (archivos duplicados y de sistema) |
+| M4 | `972f8c1` | Con `PNK_ENV=production` la aplicación se niega a conectar como `root` sin contraseña |
+| M5 | `072b24a` | `PNK_FORCE_HTTPS=1`: redirección a HTTPS (301) y HSTS con `includeSubDomains` |
+| M6 | `0d5c58f` | CSP sin `'unsafe-inline'` y sin Google Fonts externo |
+| M7 | `bc6a02b` | SRI (`integrity`) en los scripts y estilos de `vendors/` |
+
+## 🔎 Trazabilidad por vulnerabilidad
+
+Cada vulnerabilidad tiene su commit, con una etiqueta (`vul-01` a `vul-12`; las mejoras son `m1` a `m7` y la versión final es `entrega-final`).
+
+| VUL | Commit | Archivos del commit | ¿Se ejecuta solo? |
+|---|---|---|---|
+| VUL-01 | `97bedc5` | `index.php`, `mostrar_carrito.php`, `setup/setup.php` | ❌ |
+| VUL-02 | `c22e3d3` | `setup/procesalogin.php` | ❌ |
+| VUL-03 | `1093e9c` | `grcomentarios.php`, `index.php`, `js/controladorajax.js` | ❌ |
+| VUL-04 | `440d46a` | `index.php`, `mostrar_carrito.php`, `setup/setup.php` | ❌ |
+| VUL-05 | `7699fac` | `index.php`, `mostrar_carrito.php`, `setup/cerrar_sesion.php`, `setup/setup.php` | ❌ |
+| VUL-06 | `8e973f8` | `carrito.php`, `index.php`, `js/controladorajax.js`, `mostrar_carrito.php`, `setup/setup.php` | ❌ |
+| VUL-07 | `10e8cec` | `js/controladorajax.js`, `mostrar_carrito.php`, `setup/setup.php` | ❌ |
+| VUL-08 | `9acc8f0` | `setup/setup.php` | ❌ |
+| VUL-09 | `acad159` | `setup/setup.php` | ❌ |
+| VUL-10 | `db9d9d8` | `setup/setup.php` | ❌ |
+| VUL-11 | `0fa272c` | `.htaccess`, `setup/setup.php` | ✅ |
+| VUL-12 | `0393dff` | `index.php`, `js/main.js`, `mostrar_carrito.php` y 6 archivos de `vendors/` | ✅ |
+
+> **Cómo usar este historial:** los commits de VUL-01 a VUL-10 separan la corrección por tema y se leen bien como diff, pero usan funciones auxiliares que se definen en commits posteriores (por ejemplo, `entero_get` y `responder_error` en `10e8cec`), así que la aplicación falla si haces checkout de uno solo. Se comprobó levantando cada commit con PHP 8.3 y MariaDB. Para ejecutar la aplicación usa `0fa272c` o uno posterior; lo recomendado es la punta de la rama. El detalle de dependencias está en el *Informe de remediación* (sección «Mapa de commits y dependencias»).
 
 ## 🧱 Stack técnico
 
 | Parte | Herramienta | Por qué |
 | :--- | :--- | :--- |
-| Backend | PHP 7.3+ (`mysqli`, `mbstring`) | Lenguaje de la aplicación original |
+| Backend | PHP 7.4+ (`mysqli`, `mbstring`) | Lenguaje de la aplicación original. Probado en PHP 7.4, 8.1, 8.3 y 8.5 |
 | Base de datos | MariaDB / MySQL | Esquema en `Script_BD/pnk_security.sql` |
 | Frontend | Bootstrap 4 + jQuery 3.7.1 | Interfaz y llamadas AJAX del carrito |
 | Servidor | Apache (`.htaccess`) o el servidor embebido de PHP | Apache aplica el endurecimiento del `.htaccess` |
@@ -111,12 +143,12 @@ pnkSecurity/
 └─ vendors/, css/, img/, imagenes/
 Script_BD/
 └─ pnk_security.sql             → esquema y datos de ejemplo (la base de datos no se modifica)
-docs/screenshots/                → capturas de este README
+docs/                               → informes (remediación y técnico) y capturas de este README
 ```
 
 ## 💻 Correrlo en local
 
-Requisitos: PHP 7.3+ con las extensiones `mysqli` y `mbstring`, y MariaDB o MySQL.
+Requisitos: PHP 7.4+ con las extensiones `mysqli` y `mbstring`, y MariaDB o MySQL. La aplicación se probó en PHP 7.4, 8.1, 8.3 y 8.5; como PHP 7.4 ya no recibe actualizaciones de seguridad, para un despliegue real conviene usar una versión con soporte (8.3 o superior).
 
 ```sh
 git clone https://github.com/matiasNon/pnkSecurity.git
