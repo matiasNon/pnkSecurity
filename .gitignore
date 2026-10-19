@@ -1,9 +1,6 @@
 .claude/
 .gitignore
 
-# Informe técnico de pentesting: se queda local, no se sube al repositorio
-INFORME_TECNICO_pnkSecurity.docx
-
 # Evidencia que verificacion_seguridad.py genera solo si se le pide con --export-json
 evidencia_verificacion_*.json
 verificacion_seguridad.py
@@ -13,4 +10,10 @@ verificacion_seguridad.py
 ver_bd.php
 migrar_passwords_a_hash.php
 panel_admin.php
-correrpanel.md*.DS_Store
+correrpanel.md
+.DS_Store
+
+# Archivos generados o temporales
+__pycache__/
+*.pyc
+~$*
