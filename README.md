@@ -6,7 +6,7 @@
 
 **Menú digital con carrito para restaurantes** — versión *corregida* de una aplicación PHP que se entregó con vulnerabilidades a propósito, trabajada en el Laboratorio de Programación Segura I (INACAP Sede La Serena).
 
-![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-8.5.12-777BB4?logo=php&logoColor=white)
 ![MariaDB](https://img.shields.io/badge/MariaDB%20%2F%20MySQL-003545?logo=mariadb&logoColor=white)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-4-7952B3?logo=bootstrap&logoColor=white)
 ![jQuery](https://img.shields.io/badge/jQuery-3.7.1-0769AD?logo=jquery&logoColor=white)
@@ -25,6 +25,7 @@
 - [¿Qué hace?](#-qué-hace)
 - [Las dos versiones del proyecto](#-las-dos-versiones-del-proyecto)
 - [Seguridad: qué se corrigió](#-seguridad-qué-se-corrigió)
+- [Seguridad de PHP: PHP2Shell](#-seguridad-de-php-php2shell)
 - [Trazabilidad por vulnerabilidad](#-trazabilidad-por-vulnerabilidad)
 - [Stack técnico](#-stack-técnico)
 - [Estructura del proyecto](#-estructura-del-proyecto)
@@ -65,7 +66,7 @@
 | `main` | La aplicación **original, vulnerable a propósito** (para la fase de pentesting). No usar en producción. |
 | `mejoras-por-vul` | La versión **corregida**, con **un commit por vulnerabilidad** (`VUL-01` a `VUL-12`) para ver cómo se solucionó cada una, siete mejoras posteriores (M1 a M7) y la documentación en `docs/`. Los commits de VUL-01 a VUL-10 se leen como diff por vulnerabilidad, pero la aplicación se ejecuta completa desde `0fa272c` (VUL-11): ver la [trazabilidad](#-trazabilidad-por-vulnerabilidad). |
 
-Cada corrección está documentada con evidencia antes/después en el [Informe de remediación](docs/INFORME_REMEDIACION_pnkSecurity.docx). Los 20 hallazgos originales del pentesting están en el [Informe técnico](docs/INFORME_TECNICO_pnkSecurity.docx), que además trae un anexo con el commit que corrige cada uno (los 20 hallazgos se agrupan en las 12 VUL de esta tabla).
+Cada corrección está documentada con evidencia antes/después en el [Informe de remediación](docs/INFORME_REMEDIACION_pnkSecurity.docx). Los 20 hallazgos originales del pentesting están en el [Informe técnico](docs/INFORME_TECNICO_pnkSecurity.docx), que además trae un anexo con el commit que corrige cada uno (los 20 hallazgos se agrupan en las 12 VUL de esta tabla). El parche de las fallas de PHP (PHP2Shell, octubre de 2026) está en el [Informe PHP2Shell](docs/INFORME_PHP2SHELL_pnkSecurity.pdf).
 
 ## 🔒 Seguridad: qué se corrigió
 
@@ -96,6 +97,28 @@ Después de la remediación se agregaron siete mejoras, cada una en su propio co
 | M6 | `0d5c58f` | CSP sin `'unsafe-inline'` y sin Google Fonts externo |
 | M7 | `bc6a02b` | SRI (`integrity`) en los scripts y estilos de `vendors/` |
 
+## 🐘 Seguridad de PHP: PHP2Shell
+
+El 21/10/2026 el proyecto PHP publicó el parche de dos fallas críticas **del propio intérprete**: **CVE-2026-109618** y **CVE-2026-109619** (CVSS 9.2). Permiten ejecución remota de código y el caso más expuesto es Apache con `mod_php`, que es como se despliega esta aplicación. No están en el código de pnkSecurity, así que las correcciones VUL-01 a VUL-12 **no** las mitigan: la solución es actualizar PHP.
+
+| Entorno | Antes | Ahora |
+|---|---|---|
+| Servidor de AWS (Ubuntu 24.04, Apache + `mod_php`) | PHP 8.3 de Ubuntu | **PHP 8.5.12** desde `ppa:ondrej/php`; PHP 8.3 eliminado |
+| Laboratorio local (Windows) | PHP 8.3.35 | **PHP 8.5.12** |
+
+- **Versiones corregidas:** 8.5.12, 8.4.27, 8.3.36 y 8.2.35. Una distribución puede traer el parche con otro número de versión (en Ubuntu se comprueba con el `changelog` del paquete). PHP 7.4 y 8.0 ya no reciben soporte de seguridad.
+- **Cómo se actualizó el servidor** (Ubuntu 22.04 o 24.04):
+
+  ```sh
+  sudo add-apt-repository -y ppa:ondrej/php && sudo apt-get update
+  sudo apt-get install -y php8.5 libapache2-mod-php8.5 php8.5-mysql php8.5-mbstring
+  sudo a2dismod php8.1 php8.3 2>/dev/null || true; sudo a2enmod php8.5
+  sudo update-alternatives --set php /usr/bin/php8.5
+  sudo apache2ctl configtest && sudo systemctl restart apache2   # mod_php vive dentro de Apache
+  ```
+
+- **Detalle completo:** descripción de las dos CVE, procedimiento, verificación y capturas en el [Informe PHP2Shell](docs/INFORME_PHP2SHELL_pnkSecurity.pdf) (las capturas están en [`docs/evidencias-php/`](docs/evidencias-php/)).
+
 ## 🔎 Trazabilidad por vulnerabilidad
 
 Cada vulnerabilidad tiene su commit, con una etiqueta (`vul-01` a `vul-12`; las mejoras son `m1` a `m7` y la versión final es `entrega-final`).
@@ -121,7 +144,7 @@ Cada vulnerabilidad tiene su commit, con una etiqueta (`vul-01` a `vul-12`; las 
 
 | Parte | Herramienta | Por qué |
 | :--- | :--- | :--- |
-| Backend | PHP 7.4+ (`mysqli`, `mbstring`) | Lenguaje de la aplicación original. Probado en PHP 7.4, 8.1, 8.3 y 8.5 |
+| Backend | PHP 8.5.12 (`mysqli`, `mbstring`) | Lenguaje de la aplicación original. Desplegado con PHP 8.5.12 (versión con el parche de PHP2Shell); compatible con PHP 7.4+ y probada en 7.4, 8.1, 8.3 y 8.5 |
 | Base de datos | MariaDB / MySQL | Esquema en `Script_BD/pnk_security.sql` |
 | Frontend | Bootstrap 4 + jQuery 3.7.1 | Interfaz y llamadas AJAX del carrito |
 | Servidor | Apache (`.htaccess`) o el servidor embebido de PHP | Apache aplica el endurecimiento del `.htaccess` |
@@ -143,12 +166,13 @@ pnkSecurity/
 └─ vendors/, css/, img/, imagenes/
 Script_BD/
 └─ pnk_security.sql             → esquema y datos de ejemplo (la base de datos no se modifica)
-docs/                               → informes (remediación y técnico) y capturas de este README
+docs/                               → informes (remediación, técnico y PHP2Shell) y capturas de este README
+docs/evidencias-php/                → capturas del cambio de PHP (local y servidor AWS)
 ```
 
 ## 💻 Correrlo en local
 
-Requisitos: PHP 7.4+ con las extensiones `mysqli` y `mbstring`, y MariaDB o MySQL. La aplicación se probó en PHP 7.4, 8.1, 8.3 y 8.5; como PHP 7.4 ya no recibe actualizaciones de seguridad, para un despliegue real conviene usar una versión con soporte (8.3 o superior).
+Requisitos: PHP con las extensiones `mysqli` y `mbstring`, y MariaDB o MySQL. Recomendado: **PHP 8.5.12** (o 8.4.27, 8.3.36 u 8.2.35), que incluyen el parche de [PHP2Shell](#-seguridad-de-php-php2shell). La aplicación se probó en PHP 7.4, 8.1, 8.3 y 8.5, pero PHP 7.4 y 8.0 ya no reciben actualizaciones de seguridad: no los uses en un despliegue real.
 
 ```sh
 git clone https://github.com/matiasNon/pnkSecurity.git
@@ -165,6 +189,8 @@ php -S 127.0.0.1:8000 -t pnkSecurity
 ```
 
 > El servidor embebido de PHP **no lee `.htaccess`**: sirve para probar la aplicación, pero el bloqueo de `setup.php` y de los `.sql` solo se aplica con Apache.
+
+> **PHP 8.4 o superior:** las opciones `session.sid_length` y `session.sid_bits_per_character` del `php.ini` están obsoletas. Si las dejaste activas (vienen activas en el `php.ini-development` de PHP 8.3 y anteriores), PHP muestra avisos *Deprecated* al arrancar; coméntalas con `;`. Son los valores por defecto, así que el comportamiento no cambia.
 
 ## ⚙️ Variables de entorno
 
@@ -186,11 +212,14 @@ php -S 127.0.0.1:8000 -t pnkSecurity
 - Para obligar a usar HTTPS define además `PNK_FORCE_HTTPS=1` y `PNK_HOST=<tu dominio>`; si falta `PNK_HOST` no se redirige y se registra el error.
 - Usa Apache con `AllowOverride All` para que el `.htaccess` surta efecto.
 - Define las variables `PNK_DB_*` en el servidor, con un usuario de base de datos de mínimo privilegio.
+- **Instancia de evaluación:** una sola instancia EC2 con Ubuntu 24.04, Apache (`mod_php`) y MariaDB, con la rama `mejoras-por-vul` y HTTPS con certificado autofirmado (el navegador muestra una advertencia que hay que aceptar). Desde el 26/10/2026 ejecuta **PHP 8.5.12**, con el parche de PHP2Shell, y PHP 8.3 fue eliminado. El procedimiento y la verificación están en el [Informe PHP2Shell](docs/INFORME_PHP2SHELL_pnkSecurity.pdf).
+- **Mantener PHP al día:** `mod_php` carga PHP dentro de Apache, así que tras actualizar PHP hay que reiniciar Apache (`sudo systemctl restart apache2`). El repositorio `ppa:ondrej/php` se está fusionando con `packages.sury.org/php`; sigue siendo utilizable para Ubuntu 22.04 y 24.04, pero conviene vigilar la migración para seguir recibiendo parches.
 
 ## ⚠️ Riesgo residual
 
 - **Contraseñas en texto plano:** la base de datos no se modifica, así que las claves de `usuarios` siguen guardadas sin hash. El código ya usa `password_verify()` si encuentra un hash, por lo que migrarlas a futuro no requiere cambios en la aplicación.
 - **Usuario de BD:** por defecto la conexión usa `root` sin contraseña (para no romper el entorno de laboratorio). Con `PNK_ENV=production` la aplicación se niega a conectarse así y registra el intento; en producción hay que crear un usuario con privilegios mínimos y definir `PNK_DB_*`.
+- **Versión de PHP:** la seguridad de la aplicación depende también del intérprete (PHP2Shell lo demostró). Hay que seguir los avisos de seguridad de PHP y de los paquetes del sistema operativo, y comprobar el parche en el `changelog` del paquete cuando la distribución use otro número de versión.
 - **Contadores de intentos de login:** se guardan en un archivo temporal local; con varias instancias detrás de un balanceador cada una lleva su propia cuenta.
 - **CSP:** la política ya no permite `'unsafe-inline'` ni dominios externos (los estilos en línea pasaron a clases de `css/style.css` y se quitó Google Fonts: los textos usan las fuentes del sistema como respaldo).
 - **SRI:** las librerías de `vendors/` que cargan `index.php` y `mostrar_carrito.php` llevan `integrity="sha384-..."`. Si actualizas una de ellas, recalcula el hash: `openssl dgst -sha384 -binary <archivo> | openssl base64 -A`. El `.gitattributes` evita que Git convierta los saltos de línea de `vendors/` (en Windows con `autocrlf` el hash dejaría de coincidir).
