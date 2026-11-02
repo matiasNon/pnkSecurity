@@ -35,5 +35,12 @@ Cuentas de demostración (solo dev/QA): `admin@gmail.com` / `admin01` (administr
 EC2 nueva (Ubuntu) con Security Group 22 (solo tu IP), 80 y 443; ejecutar `infra/aws-user-data.sh` (instala Docker, clona esta rama,
 genera secretos y certificado, levanta producción). La instancia de la entrega anterior (Apache + PHP) no se modifica.
 
-## Preparado para la 4.ª entrega (Jenkins)
-Scripts `npm run lint`, `npm test`, `npm run audit`, `npm run qa` y endpoint `/health` listos para una pipeline.
+## Pipeline Jenkins (4.ª entrega)
+`Jenkinsfile`: Desarrollo (eslint + SAST) → QA con IA (Jest/Supertest + Playwright) → filtro de seguridad (Gitleaks, npm audit + OSV,
+OWASP Dependency-Check, Trivy con CVE/CWE de MITRE, OWASP ZAP) → despliegue automático a producción **solo si todo pasa**;
+si hay errores o librerías vulnerables/deprecadas el despliegue se rechaza. Detalle, plugins, evidencia y riesgos en
+[`docs/JENKINS.md`](docs/JENKINS.md); capturas en `docs/evidencias/jenkins/`.
+
+```bash
+docker compose -p pnk-jenkins -f docker-compose.jenkins.yml up -d --build   # http://localhost:8081
+```
