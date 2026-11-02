@@ -1,0 +1,43 @@
+HTTP/1.1 200 OK
+Server: nginx
+Date: Mon, 02 Nov 2026 21:55:22 GMT
+Content-Type: text/html; charset=utf-8
+Content-Length: 35025
+Connection: keep-alive
+Content-Security-Policy: default-src 'self';script-src 'self';style-src 'self';font-src 'self' data:;img-src 'self' data:;connect-src 'self';object-src 'none';base-uri 'self';form-action 'self';frame-ancestors 'none'
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-origin
+Origin-Agent-Cluster: ?1
+Referrer-Policy: strict-origin-when-cross-origin
+X-Content-Type-Options: nosniff
+X-DNS-Prefetch-Control: off
+X-Download-Options: noopen
+X-Frame-Options: DENY
+X-Permitted-Cross-Domain-Policies: none
+X-XSS-Protection: 0
+Permissions-Policy: geolocation=(), camera=(), microphone=()
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+Cache-Control: no-store
+Set-Cookie: PNKSESSID=s%3AJJJPehswg8Vb1Btfeych8Q0vA0EjrTRx.uMR3dWp7Cojwe6gQ%2ByFk46GBwO9LCeYzO51KdoPeodg; Path=/; HttpOnly; Secure; SameSite=Strict
+
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Date: Mon, 02 Nov 2026 21:55:22 GMT
+Content-Type: text/plain; charset=utf-8
+Content-Length: 66
+Connection: keep-alive
+Content-Security-Policy: default-src 'self';script-src 'self';style-src 'self';font-src 'self' data:;img-src 'self' data:;connect-src 'self';object-src 'none';base-uri 'self';form-action 'self';frame-ancestors 'none'
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-origin
+Origin-Agent-Cluster: ?1
+Referrer-Policy: strict-origin-when-cross-origin
+X-Content-Type-Options: nosniff
+X-DNS-Prefetch-Control: off
+X-Download-Options: noopen
+X-Frame-Options: DENY
+X-Permitted-Cross-Domain-Policies: none
+X-XSS-Protection: 0
+Permissions-Policy: geolocation=(), camera=(), microphone=()
+Location: https://localhost/restaurantes/1
+Vary: Accept
+

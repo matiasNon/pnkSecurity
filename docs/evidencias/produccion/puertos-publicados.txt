@@ -1,0 +1,4 @@
+NAMES              PORTS
+pnk-prod-nginx-1   0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+pnk-prod-app-1     3000/tcp
+pnk-prod-db-1      5432/tcp

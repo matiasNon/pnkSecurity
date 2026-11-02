@@ -19,3 +19,6 @@ uploads/
 
 .DS_Store
 *.log
+
+# Certificados TLS generados (infra/certs)
+infra/certs/
