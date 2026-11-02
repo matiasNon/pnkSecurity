@@ -21,7 +21,7 @@
 <% } else { %>
       <span>Bienvenido: <%= sesion.nombre %></span>
 <% if (sesion.rol === 'admin') { %>
-      <a class="btn btn-link" href="/admin">Panel de administración</a>
+      <a class="btn btn-success my-2 my-sm-0" href="/admin">Administrar carta (CRUD)</a>
 <% } %>
       <form class="form-inline" action="/logout" method="post">
         <input type="hidden" name="csrf" value="<%= csrfToken %>">

@@ -98,7 +98,7 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
     await page.getByPlaceholder('Usuario').fill('admin@gmail.com');
     await page.getByPlaceholder('Contraseña').fill('admin01');
     await page.getByRole('button', { name: 'Ingresar' }).click();
-    await page.getByRole('link', { name: 'Panel de administración' }).click();
+    await page.getByRole('link', { name: 'Administrar carta (CRUD)' }).click();
     await expect(page.getByRole('heading', { name: 'Panel de administración' })).toBeVisible();
     await captura(page, '06-panel-admin');
 
