@@ -1,0 +1,34 @@
+# Jenkins Configuration as Code: la instancia se crea ya configurada (usuario, job y herramientas), sin pasos manuales.
+jenkins:
+  systemMessage: "Pipeline de la carta digital PNK (INACAP La Serena) - filtro de seguridad OWASP / MITRE"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+unclassified:
+  location:
+    url: "${JENKINS_URL:-http://localhost:8080/}"
+jobs:
+  - script: >
+      pipelineJob('carta-digital') {
+        description('Dev -> QA (IA) -> filtro de seguridad (OWASP / MITRE) -> despliegue automatico a produccion')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url("${REPO_URL}") }
+                branches("*/${REPO_BRANCH:-carta-digital-node}")
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(false)
+          }
+        }
+        triggers { scm('H/5 * * * *') }
+      }

@@ -1,10 +1,13 @@
 'use strict';
 const js = require('@eslint/js');
 const globals = require('globals');
+const security = require('eslint-plugin-security');
 
 module.exports = [
   { ignores: ['node_modules/', 'public/', 'reports/', 'coverage/', 'test-results/', 'playwright-report/'] },
   js.configs.recommended,
+  // SAST ligero (CWE: inyeccion, regex inseguras, eval, rutas dinamicas): se ejecuta en el filtro de seguridad de Jenkins.
+  security.configs.recommended,
   {
     files: ['**/*.js'],
     languageOptions: {

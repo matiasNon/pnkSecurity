@@ -1,0 +1,16 @@
+# Gitleaks: busca secretos en el codigo y en el historial. Se usan las reglas por defecto mas esta lista de excepciones.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Valores de ejemplo de dev/QA y cuentas de demostracion documentadas (no son secretos reales)"
+paths = [
+  '''\.env\.dev$''',
+  '''\.env\.qa$''',
+  '''\.env\.prod\.example$''',
+  '''docs/''',
+  '''tests/''',
+  '''scripts/seed-usuarios\.js$''',
+  '''README\.md$''',
+  '''package-lock\.json$''',
+]

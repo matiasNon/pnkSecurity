@@ -1,0 +1,15 @@
+configuration-as-code
+job-dsl
+workflow-aggregator
+pipeline-stage-view
+git
+credentials-binding
+timestamper
+ansicolor
+build-timeout
+ws-cleanup
+junit
+htmlpublisher
+warnings-ng
+dependency-check-jenkins-plugin
+mailer

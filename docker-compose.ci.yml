@@ -1,0 +1,8 @@
+# Variante del ambiente QA para la pipeline de Jenkins. Jenkins corre en un contenedor y habla con el Docker del host,
+# asi que aqui NO hay bind mounts (las rutas del contenedor de Jenkins no existen en el host): los reportes se extraen con "docker cp".
+# Uso (lo hace el Jenkinsfile):  docker compose -p pnk-ci -f docker-compose.yml -f docker-compose.qa.yml -f docker-compose.ci.yml ...
+services:
+  tests:
+    volumes: !reset []
+  e2e:
+    volumes: !reset []

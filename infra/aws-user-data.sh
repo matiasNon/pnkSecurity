@@ -36,6 +36,7 @@ fi
 
 # 4) Certificado TLS autofirmado para la IP y arranque
 bash infra/generar-certificado.sh "$IP"
+bash infra/cargar-certificado.sh
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
 echo "Listo: https://$IP/restaurantes/1  (certificado autofirmado: el navegador pedira aceptarlo)"
