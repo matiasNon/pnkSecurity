@@ -1,0 +1,2 @@
+# Las librerias de terceros se guardan y se sirven byte a byte: los hashes SRI de las vistas dependen de ello.
+public/vendors/** -text

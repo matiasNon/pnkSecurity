@@ -1,0 +1,14 @@
+node_modules
+.git
+.env
+.env.*
+!.env.dev
+!.env.qa
+!.env.prod.example
+uploads
+coverage
+reports
+test-results
+playwright-report
+docs
+*.md

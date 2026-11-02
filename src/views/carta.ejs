@@ -1,0 +1,268 @@
+<%- include('partials/cabecera') %>
+<nav class="navbar navbar-light bg-light">
+<% if (!sesion) { %>
+      <form class="form-inline" role="search" action="/login" method="post">
+        <input type="hidden" name="csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="id" value="<%= rid %>">
+        <div class="form-group">
+          <div class="input-group-prepend">
+            <span class="input-group-text" id="basic-addon1">@</span>
+          </div>
+            <input type="email" class="form-control" name="frmusuario" placeholder="Usuario" maxlength="255" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+            <input type="password" class="form-control" name="frmpassword" placeholder="Contraseña" maxlength="128" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-outline-primary my-2 my-sm-0">Ingresar</button>
+      </form>
+<% if (mensajeLogin) { %>
+        <span class="text-danger ml-3" role="alert"><%= mensajeLogin %></span>
+<% } %>
+<% } else { %>
+      <span>Bienvenido: <%= sesion.nombre %></span>
+<% if (sesion.rol === 'admin') { %>
+      <a class="btn btn-link" href="/admin">Panel de administración</a>
+<% } %>
+      <form class="form-inline" action="/logout" method="post">
+        <input type="hidden" name="csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="id" value="<%= rid %>">
+        <button type="submit" class="btn btn-link">Cerrar sesión</button>
+      </form>
+<% } %>
+</nav>
+  <section>
+    <div class="container contendor">
+      <div class="row">
+        <div class="col-lg-4">
+          <div class="centrado">
+            <div class="media">
+              <img class="logosintituciones" src="/img/logo.png" width="190px" alt="">
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="centrado">
+            <div class="media">
+<% if (foto(restaurante.foto)) { %>
+                  <img class="logosintituciones" src="<%= foto(restaurante.foto) %>" width="170px" alt="">
+<% } else { %>
+                  <img class="logosintituciones" src="/img/logo_empresa_comodin.png" width="170px" alt="">
+<% } %>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="carro">
+            <div class="media float-right">
+              <a class="button_carrito" href="/restaurantes/<%= rid %>/carrito">
+              <%- include('partials/icono', { tipo: 'carrito' }) %>
+              Productos Seleccionados
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-lg-12">
+            <div class="text-center">
+              <h4><%= restaurante.nombre %></h4>
+              <h5>
+                <%- include('partials/icono', { tipo: 'ubicacion' }) %>
+              <%= restaurante.calle + ' #' + restaurante.numero + ', ' + restaurante.comuna %>
+              </h5>
+              <h5>
+<% if (restaurante.fono) { %>
+                <%- include('partials/icono', { tipo: 'telefono' }) %>
+                <%= restaurante.fono %>
+<% } %>
+<% if (restaurante.email) { %>
+                <%- include('partials/icono', { tipo: 'correo' }) %>
+                <%= restaurante.email %>
+<% } %>
+            </h5>
+            </div>
+        </div>
+      </div>
+    </div>
+  </section>
+<% if (destacados.length > 0) { %>
+  <section class="destacados">
+    <div class="container contendor">
+      <div class="section-intro">
+        <h4 class="intro-title">Menús Destacados</h4>
+      </div>
+      <div class="owl-carousel owl-theme featured-carousel">
+<% for (const d of destacados) { %>
+        <div class="featured-item">
+<% if (foto(d.foto)) { %>
+                  <img class="card-img rounded-0" width="350px" height="235px" src="<%= foto(d.foto) %>" alt="">
+<% } else { %>
+                  <img class="card-img rounded-0" src="/imagenes/producto.jpg" width="350px" height="235px" alt="">
+<% } %>
+          <div class="item-body">
+              <h3><%= d.nombre %></h3>
+            <p><%= d.descripcion %><br>
+            <%= d.observaciones %><br>
+<% if (d.tiempo) { %>
+            <%- include('partials/icono', { tipo: 'reloj' }) %>
+                <%= ' ' + d.tiempo %>
+<% } %>
+            </p>
+            <div class="d-flex justify-content-between">
+              <ul class="rating-star">
+<% for (let i = 1; i <= d.puntuacion; i++) { %>
+                    <li><i class="ti-star"></i></li>
+<% } %>
+              </ul>
+              <h3 class="price-tag"><%= moneda(d.precio) %></h3>
+            </div>
+            <a class="button sin-margen" href="#" id="<%= d.id %>">Seleccionar</a>
+          </div>
+        </div>
+<% } %>
+      </div>
+    </div>
+  </section>
+<% } %>
+<section>
+    <div class="container contendor">
+       <div class="container">
+              <div class="row">
+                <div class="col-lg-12">
+                  <nav>
+                    <div class="nav nav-tabs nav-fill" id="nav-tab" role="tablist">
+<% for (const c of cartas) { %>
+                              <a class="nav-item nav-link" id="nav-carta-<%= c.id %>-tab" data-toggle="tab" href="#carta-<%= c.id %>" role="tab" aria-controls="carta-<%= c.id %>" aria-selected="false"><%= c.nombre %></a>
+<% } %>
+                    </div>
+                  </nav>
+                  <div class="tab-content py-3 px-3 px-sm-0" id="nav-tabContent">
+<% const paneles = cartas.length > 0 ? cartas : [{ id: 0, categorias: [] }]; %>
+<% paneles.forEach((panel, i) => { %>
+                    <div class="tab-pane fade <%= i === 0 ? 'show active' : '' %>" id="carta-<%= panel.id %>" role="tabpanel" aria-labelledby="nav-carta-<%= panel.id %>-tab">
+<% if (panel.categorias.length === 0) { %>
+                              <div class="row">
+                                <div class="col-lg-12">
+                                  <div class="text-center">
+                                    <h4>No hay información para Mostrar</h4>
+                                  </div>
+                                </div>
+                              </div>
+<% } else { %>
+<% for (const cat of panel.categorias) { %>
+                                <div class="section-intro mb-20px">
+                                    <h4 class="intro-title"><%= cat.nombre %></h4>
+                                </div>
+
+                                <div class="row">
+<% if (cat.items.length > 0) { %>
+<% for (const it of cat.items) { %>
+                                            <div class="<%= cat.items.length > 1 ? 'col-lg-6' : 'col-lg-12' %>">
+                                              <div class="media align-items-center food-card">
+<% if (foto(it.foto) === null) { %>
+                                                <img class="mr-3 mr-sm-4" src="/imagenes/producto.jpg" alt="" width="120px">
+<% } else { %>
+                                                <img class="mr-3 mr-sm-4" src="<%= foto(it.foto) %>" alt="" width="120px">
+<% } %>
+                                                <div class="media-body">
+                                                  <div class="d-flex justify-content-between food-card-title">
+                                                    <h4><%= it.nombre %></h4>
+                                                    <h3 class="price-tag"><%= moneda(it.precio) %></h3>
+                                                  </div>
+                                                  <p><%= it.descripcion %></br>
+                                                  <%= it.observaciones %></p>
+<% if (it.tiempo) { %>
+                                                  <p><%- include('partials/icono', { tipo: 'reloj' }) %>
+                                                      <%= ' ' + it.tiempo %></p>
+<% } %>
+                                                      <p>
+                                                        <ul class="rating-star">
+<% for (let k = 1; k <= it.puntuacion; k++) { %>
+                                                              <li><i class="ti-star"></i></li>
+<% } %>
+                                                        </ul>
+                                                      </p>
+                                                  <a class="button float-right" href="#" id="<%= it.id %>">Seleccionar</a>
+                                                </div>
+                                              </div>
+                                            </div>
+<% } %>
+<% } else { %>
+                                        <div class="col-lg-12 ">
+                                          <div class="text-center">
+                                                <h4>No Información para Mostrar</h4>
+                                          </div>
+                                        </div>
+<% } %>
+                                </div>
+<% } %>
+<% } %>
+                    </div>
+<% }) %>
+                  </div>
+                </div>
+              </div>
+        </div>
+    </div>
+</section>
+<div id="myModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-lg-center" id="exampleModalLabel">Selección de Producto</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        El producto seleccionado, ha sido agregado sin problemas!!!
+      </div>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="container contendor">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="section-intro">
+            <h4 class="intro-title">Comentarios</h4>
+<% if (mensajeComentario) { %>
+              <div class="alert alert-<%= mensajeComentario[0] %>" role="alert"><%= mensajeComentario[1] %></div>
+<% } %>
+<% if (sesion) { %>
+             <form action="/restaurantes/<%= rid %>/comentarios" method="post">
+              <input type="hidden" name="csrf" value="<%= csrfToken %>">
+              <div class="form-group">
+                <label for="usuario">Nombre:</label>
+                <input type="text" class="form-control" id="usuario" value="<%= sesion.nombre %>" readonly>
+              </div>
+              <div class="form-group">
+                <label for="comentario">Comentario:</label>
+                <textarea class="form-control" rows="5" id="comentario" name="comentario" maxlength="1000" required></textarea>
+              </div>
+              <button type="submit" class="btn btn-success fa-align-right">Comentar</button>
+           </form>
+<% } %>
+          </div>
+          <br>
+<% for (const c of comentarios) { %>
+          <div class="card bg-light">
+            <div class="card-body">
+              <b><%= c.usuario %></b>
+              <br>
+              <%- nl2br(c.comentario) %>
+            </div>
+          </div>
+          <br>
+<% } %>
+          <hr>
+        </div>
+      </div>
+    </div>
+  </div>
+  </section>
+
+<%- include('partials/pie') %>
+<%- include('partials/scripts') %>

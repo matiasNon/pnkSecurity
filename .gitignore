@@ -1,0 +1,21 @@
+node_modules/
+coverage/
+reports/
+test-results/
+playwright-report/
+
+# Variables de entorno reales: nunca se commitean (solo los ejemplos .env.dev, .env.qa y .env.prod.example)
+.env
+.env.prod
+.env.local
+
+# Subidas del panel de administracion (volumen de Docker, no codigo)
+uploads/
+
+# Certificados y claves
+*.pem
+*.key
+*.crt
+
+.DS_Store
+*.log

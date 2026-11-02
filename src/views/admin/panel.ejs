@@ -1,0 +1,38 @@
+<%- include('../partials/cabecera') %>
+<nav class="navbar navbar-light bg-light">
+  <span>Administrador: <%= sesion.nombre %></span>
+  <a class="btn btn-link" href="/restaurantes/<%= restaurante.id %>">Ver la carta</a>
+  <form class="form-inline" action="/logout" method="post">
+    <input type="hidden" name="csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="id" value="<%= restaurante.id %>">
+    <button type="submit" class="btn btn-link">Cerrar sesión</button>
+  </form>
+</nav>
+<section>
+  <div class="container contendor">
+    <h4 class="intro-title text-center">Panel de administración</h4>
+    <h5 class="text-center"><%= restaurante.nombre %></h5>
+    <div class="row mt-4">
+      <div class="col-md-4 mb-3">
+        <div class="card"><div class="card-body text-center">
+          <h3><%= totales.cartas %></h3><p>Cartas</p>
+          <a class="btn btn-outline-primary" href="/admin/cartas">Administrar cartas</a>
+        </div></div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card"><div class="card-body text-center">
+          <h3><%= totales.categorias %></h3><p>Categorías</p>
+          <a class="btn btn-outline-primary" href="/admin/categorias">Administrar categorías</a>
+        </div></div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="card"><div class="card-body text-center">
+          <h3><%= totales.productos %></h3><p>Productos</p>
+          <a class="btn btn-outline-primary" href="/admin/productos">Administrar productos</a>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+<%- include('../partials/pie') %>
+<%- include('../partials/scripts') %>

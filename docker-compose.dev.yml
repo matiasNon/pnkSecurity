@@ -1,0 +1,22 @@
+# Ambiente de DESARROLLO: codigo montado como volumen con recarga automatica, Postgres expuesto solo en localhost.
+services:
+  db:
+    env_file: .env.dev
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+
+  app:
+    env_file: .env.dev
+    command: ["node", "--watch", "src/server.js"]
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src:ro
+      - ./public:/app/public:ro
+      - ./db:/app/db:ro
+      - ./scripts:/app/scripts:ro
+
+volumes:
+  pgdata_dev: {}
