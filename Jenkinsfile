@@ -155,17 +155,19 @@ pipeline {
               // Escaneo al ambiente QA: cabeceras, cookies, XSS reflejado, SQLi...
               sh '''
                 docker rm -f ci-zap >/dev/null 2>&1 || true
+                docker volume rm -f zap_wrk >/dev/null 2>&1 || true
                 set +e
-                docker create --name ci-zap --network ${CI_PROJECT}_interna -u root ghcr.io/zaproxy/zaproxy:stable \
-                  zap-baseline.py -t http://carta:3000/restaurantes/1 -c zap-rules.conf -r zap.html -J zap.json >/dev/null
+                docker create --name ci-zap --network ${CI_PROJECT}_interna -u root -v zap_wrk:/zap/wrk ghcr.io/zaproxy/zaproxy:stable                   zap-baseline.py -t http://carta:3000/restaurantes/1 -c zap-rules.conf -r zap.html -J zap.json -j >/dev/null
                 docker cp security/zap-rules.conf ci-zap:/zap/wrk/zap-rules.conf
                 docker start -a ci-zap
                 rc=$?
-                docker cp ci-zap:/zap/wrk/zap.html reports/seguridad/zap.html || true
-                docker cp ci-zap:/zap/wrk/zap.json reports/seguridad/zap.json || true
+                docker cp ci-zap:/zap/wrk/zap.html reports/seguridad/zap.html
+                docker cp ci-zap:/zap/wrk/zap.json reports/seguridad/zap.json
                 docker rm -f ci-zap >/dev/null 2>&1
-                # 0 = limpio, 2 = solo advertencias; 1 = alguna regla marcada FAIL en security/zap-rules.conf
-                [ $rc -eq 1 ] && exit 1 || exit 0
+                docker volume rm -f zap_wrk >/dev/null 2>&1
+                # 0 = limpio, 2 = solo advertencias (pasa); 1 = regla FAIL de security/zap-rules.conf; otro = ZAP no pudo escanear (tambien falla)
+                [ -s reports/seguridad/zap.json ] || { echo "ZAP no genero informe: el escaneo no se ejecuto"; exit 1; }
+                [ $rc -eq 0 ] || [ $rc -eq 2 ]
               '''
             }
           }
