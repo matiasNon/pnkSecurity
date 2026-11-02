@@ -110,6 +110,10 @@ pipeline {
                   scan source --lockfile package-lock.json --format json --output reports/seguridad/osv-scanner.json
                 docker run --rm --volumes-from $JENKINS_CONTAINER -w "$WORKSPACE" ghcr.io/google/osv-scanner:latest \
                   scan source --lockfile package-lock.json
+                # Politica: bloquea CVSS >= 7 (alto/critico); las severidades medias/bajas se informan pero no bloquean.
+                ALTAS=$(jq '[.results[].packages[].groups[] | select((.max_severity | tonumber? // 0) >= 7)] | length' reports/seguridad/osv-scanner.json)
+                echo "OSV: vulnerabilidades con CVSS >= 7: $ALTAS"
+                [ "$ALTAS" = "0" ]
                 rc2=$?
                 [ $rc1 -eq 0 ] && [ $rc2 -eq 0 ]
               '''

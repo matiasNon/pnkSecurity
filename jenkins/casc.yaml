@@ -13,7 +13,7 @@ jenkins:
       allowAnonymousRead: false
 unclassified:
   location:
-    url: "${JENKINS_URL:-http://localhost:8080/}"
+    url: "${JENKINS_URL:-http://localhost:8081/}"
 jobs:
   - script: >
       pipelineJob('carta-digital') {

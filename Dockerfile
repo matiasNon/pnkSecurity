@@ -25,6 +25,10 @@ COPY src ./src
 COPY scripts ./scripts
 COPY db ./db
 COPY public ./public
+# La imagen final no necesita npm, corepack ni yarn (solo ejecuta "node"): se quitan para reducir la superficie de ataque
+# (el escaner de imagenes reportaba CVE en las librerias internas de npm: undici, brace-expansion).
+USER root
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack            /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /opt/yarn* /usr/local/bin/yarn* 2>/dev/null; true
 # Directorio de subidas (se monta como volumen aparte) con dueno no-root.
 RUN mkdir -p /data/uploads && chown -R node:node /data /app
 USER node
