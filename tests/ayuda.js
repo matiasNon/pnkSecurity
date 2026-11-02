@@ -10,7 +10,7 @@ const { crearPool } = require('../src/config/db');
 const { iniciarLog } = require('../src/services/logSeguridad');
 const { crearApp } = require('../src/app');
 
-const UPLOAD_DIR = path.join(os.tmpdir(), 'pnk-qa-uploads');
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(os.tmpdir(), 'pnk-qa-uploads');
 
 // Variables de entorno del ambiente QA. Se pueden sobrescribir desde fuera (docker-compose.qa.yml).
 function entornoPrueba(extra = {}) {
@@ -23,7 +23,7 @@ function entornoPrueba(extra = {}) {
     DB_USER: process.env.DB_USER || 'pnk_app',
     DB_PASSWORD: process.env.DB_PASSWORD || 'dev_password_local',
     SESSION_SECRET: 'secreto-de-pruebas-automaticas-qa-0123456789',
-    UPLOAD_DIR: process.env.UPLOAD_DIR || UPLOAD_DIR,
+    UPLOAD_DIR,
     ...extra,
   };
 }

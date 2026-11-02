@@ -17,7 +17,8 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
   test('RF-01 la carta del restaurante 1 se muestra completa', async ({ page }) => {
     const errores = [];
     page.on('pageerror', (e) => errores.push(e.message));
-    page.on('console', (m) => { if (m.type() === 'error') errores.push(m.text()); });
+    // COOP se ignora en origenes HTTP que no son localhost (QA por HTTP interno): no es un fallo de la aplicacion.
+    page.on('console', (m) => { if (m.type() === 'error' && !/Cross-Origin-Opener-Policy/.test(m.text())) errores.push(m.text()); });
 
     await page.goto('/restaurantes/1');
     await expect(page.getByRole('heading', { name: 'Afríca Restobar' })).toBeVisible();

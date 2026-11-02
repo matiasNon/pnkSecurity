@@ -8,9 +8,9 @@ mkdir -p reports docs/evidencias/qa
 
 $C down -v --remove-orphans >/dev/null 2>&1
 echo "== 1/2 Pruebas funcionales (Jest + Supertest) =="
-$C run --rm tests; rc_tests=$?
+$C run --build --rm tests; rc_tests=$?
 echo "== 2/2 Pruebas de extremo a extremo (Playwright) =="
-$C run --rm e2e; rc_e2e=$?
+$C run --build --rm e2e; rc_e2e=$?
 $C down -v --remove-orphans >/dev/null 2>&1
 
 echo

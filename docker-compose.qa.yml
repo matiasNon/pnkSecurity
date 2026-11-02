@@ -10,6 +10,10 @@ services:
 
   app:
     env_file: .env.qa
+    networks:
+      interna:
+        # Alias distinto de "app": ".app" es un TLD con HSTS precargado y Chromium forzaria HTTPS.
+        aliases: [carta]
 
   tests:
     build:
@@ -34,7 +38,7 @@ services:
       app:
         condition: service_healthy
     environment:
-      BASE_URL: http://app:3000
+      BASE_URL: http://carta:3000
       EVIDENCIA_DIR: /evidencia
     volumes:
       - ./reports:/app/reports
