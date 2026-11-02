@@ -1,0 +1,42 @@
+# Ambiente de QA: BD EFIMERA (tmpfs, se recrea con la migracion en cada ejecucion), imagen igual a la de produccion
+# y servicios de prueba. Se ejecuta con scripts/qa.sh (o a mano):
+#   docker compose -f docker-compose.yml -f docker-compose.qa.yml run --rm tests   # funcionales (Jest + Supertest)
+#   docker compose -f docker-compose.yml -f docker-compose.qa.yml run --rm e2e     # navegador real (Playwright)
+services:
+  db:
+    env_file: .env.qa
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  app:
+    env_file: .env.qa
+
+  tests:
+    build:
+      context: .
+      target: test
+    env_file: .env.qa
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      UPLOAD_DIR: /tmp/uploads
+    volumes:
+      - ./reports:/app/reports
+    networks: [interna]
+
+  e2e:
+    build:
+      context: .
+      target: e2e
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      BASE_URL: http://app:3000
+      EVIDENCIA_DIR: /evidencia
+    volumes:
+      - ./reports:/app/reports
+      - ./docs/evidencias/qa:/evidencia
+    networks: [interna]

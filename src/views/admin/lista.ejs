@@ -1,7 +1,7 @@
 <%- include('../partials/cabecera') %>
 <nav class="navbar navbar-light bg-light">
   <a class="btn btn-link" href="/admin">&larr; Panel</a>
-  <a class="btn btn-outline-success" href="/admin/<%= nombreRecurso %>/nuevo">Nueva <%= recurso.singular.toLowerCase() %></a>
+  <a class="btn btn-outline-success" href="/admin/<%= nombreRecurso %>/nuevo"><%= recurso.nuevo %> <%= recurso.singular.toLowerCase() %></a>
 </nav>
 <section>
   <div class="container contendor">

@@ -32,7 +32,7 @@ function crearApp({ cfg, pool }) {
   app.set('views', path.join(__dirname, 'views'));
   app.locals.moneda = monedaChilena;
 
-  app.use(cabecerasSeguridad(cfg));
+  app.use(cabecerasSeguridad());
 
   // Salud para Docker y la pipeline: sin sesion y sin redireccion a HTTPS.
   app.get('/health', async (req, res) => {

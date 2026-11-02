@@ -7,7 +7,6 @@ function noEncontrado(req, res) {
   res.status(404).render('error', { titulo: 'Página no encontrada', codigo: 404 });
 }
 
-// eslint-disable-next-line no-unused-vars
 function manejadorErrores(err, req, res, next) {
   if (res.headersSent) return next(err);
   // Errores de lectura del cuerpo (JSON/forms malformados o demasiado grandes): 4xx sin detalle tecnico.

@@ -5,7 +5,7 @@
 const helmet = require('helmet');
 const { logSeguridad } = require('../services/logSeguridad');
 
-function cabecerasSeguridad(cfg) {
+function cabecerasSeguridad() {
   const csp = helmet({
     contentSecurityPolicy: {
       useDefaults: false,

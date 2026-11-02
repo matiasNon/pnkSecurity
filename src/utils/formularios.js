@@ -56,7 +56,9 @@ function validar(esquema, entrada) {
   const errores = {};
   for (const i of r.error.issues) {
     const campo = i.path[0] || 'general';
-    if (!errores[campo]) errores[campo] = i.message === 'Required' ? 'Campo obligatorio' : i.message;
+    if (errores[campo]) continue;
+    // Los mensajes por defecto de zod estan en ingles: los tipos faltantes o invalidos se explican en espanol.
+    errores[campo] = ['invalid_type', 'invalid_value'].includes(i.code) ? 'Campo obligatorio o con formato invalido' : i.message;
   }
   return { errores };
 }

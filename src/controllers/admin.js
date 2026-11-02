@@ -19,6 +19,7 @@ module.exports = (modelos, subidas) => {
   const recursos = {
     cartas: {
       singular: 'Carta',
+      nuevo: 'Nueva',
       plural: 'Cartas',
       esquema: esquemaCarta,
       columnas: [
@@ -40,6 +41,7 @@ module.exports = (modelos, subidas) => {
     },
     categorias: {
       singular: 'Categoría',
+      nuevo: 'Nueva',
       plural: 'Categorías',
       esquema: esquemaCategoria,
       columnas: [
@@ -66,6 +68,7 @@ module.exports = (modelos, subidas) => {
     },
     productos: {
       singular: 'Producto',
+      nuevo: 'Nuevo',
       plural: 'Productos',
       esquema: esquemaItem,
       multipart: true,
@@ -139,7 +142,7 @@ module.exports = (modelos, subidas) => {
     const rid = req.usuario.restaurante_id;
     const campos = await req.recurso.campos(rid);
     res.status(estado).render('admin/formulario', {
-      titulo: id ? `Editar ${req.recurso.singular.toLowerCase()}` : `Nueva ${req.recurso.singular.toLowerCase()}`,
+      titulo: id ? `Editar ${req.recurso.singular.toLowerCase()}` : `${req.recurso.nuevo} ${req.recurso.singular.toLowerCase()}`,
       recurso: req.recurso, nombreRecurso: req.nombreRecurso, campos, valores, errores: errores || {}, id,
       errorGeneral: error, fotoActual: valores && valores.foto ? rutaFoto(rid, valores.foto) : null,
     });

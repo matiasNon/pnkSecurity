@@ -56,11 +56,9 @@ async function enTransaccion(pool, tipo, fn) {
 async function reservarLogin(pool, datos) {
   const k = clavesLogin(datos);
   return enTransaccion(pool, 'login', async (c) => {
-    const [par, cuenta, ip] = await Promise.all([
-      contar(c, 'login', k.par, LOGIN_VENTANA_SEG),
-      contar(c, 'login', k.cuenta, LOGIN_VENTANA_SEG),
-      contar(c, 'login', k.ip, LOGIN_VENTANA_SEG),
-    ]);
+    const par = await contar(c, 'login', k.par, LOGIN_VENTANA_SEG);
+    const cuenta = await contar(c, 'login', k.cuenta, LOGIN_VENTANA_SEG);
+    const ip = await contar(c, 'login', k.ip, LOGIN_VENTANA_SEG);
     if (par >= LOGIN_MAX_POR_PAR || cuenta >= LOGIN_MAX_POR_CUENTA || ip >= LOGIN_MAX_POR_IP) {
       return { bloqueado: true, intentos: 0 };
     }
