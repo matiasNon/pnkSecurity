@@ -7,7 +7,7 @@ Proyecto de **Programación Segura** — INACAP La Serena. Equipo: Matías Nonqu
 - **Stack:** Node.js 24, Express (MVC con vistas EJS), PostgreSQL 17, Docker, nginx (TLS).
 - **Código seguro:** ISO/IEC 27001:2022, ISO/IEC 27034 y OWASP ASVS v5 → [matriz de controles](docs/MATRIZ_ASVS_ISO.md).
 - **QA con IA:** 186 pruebas funcionales + 10 e2e → [docs/qa](docs/qa/README.md).
-- **Migración MySQL → PostgreSQL:** [docs/MIGRACION.md](docs/MIGRACION.md). **Cloudflare (pendiente de dominio):** [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md).
+- **Migración MySQL → PostgreSQL:** [docs/MIGRACION.md](docs/MIGRACION.md). **Cloudflare (se configura después, al tener dominio):** [docs/CLOUDFLARE.md](docs/CLOUDFLARE.md).
 
 ## Estructura (MVC)
 ```
@@ -36,6 +36,7 @@ EC2 nueva (Ubuntu) con Security Group 22 (solo tu IP), 80 y 443; ejecutar `infra
 genera secretos y certificado, levanta producción). La instancia de la entrega anterior (Apache + PHP) no se modifica.
 
 ## Pipeline Jenkins (4.ª entrega)
+Ramas: `carta-digital-node` (desarrollo), `qa` y `produccion`; solo `produccion` despliega.
 `Jenkinsfile`: Desarrollo (eslint + SAST) → QA con IA (Jest/Supertest + Playwright) → filtro de seguridad (Gitleaks, npm audit + OSV,
 OWASP Dependency-Check, Trivy con CVE/CWE de MITRE, OWASP ZAP) → despliegue automático a producción **solo si todo pasa**;
 si hay errores o librerías vulnerables/deprecadas el despliegue se rechaza. Detalle, plugins, evidencia y riesgos en

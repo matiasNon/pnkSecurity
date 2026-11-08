@@ -1,4 +1,5 @@
 // Pipeline CI/CD de la carta digital PNK (4.a entrega).
+// Ramas: carta-digital-node (desarrollo) y qa corren todos los filtros; SOLO la rama produccion despliega.
 //   Desarrollo (lint + SAST) -> QA (pruebas funcionales con IA + e2e) -> FILTRO DE SEGURIDAD (OWASP / MITRE)
 //   -> despliegue automatico a produccion SOLO si todo lo anterior pasa.
 // Si hay errores, vulnerabilidades altas o librerias deprecadas, el despliegue se rechaza y se notifican los problemas.
@@ -178,7 +179,7 @@ pipeline {
     // ---------- 4. DESPLIEGUE AUTOMATICO A PRODUCCION (solo si todo paso) ----------
     stage('Despliegue a produccion') {
       when {
-        expression { currentBuild.currentResult == 'SUCCESS' && (env.GIT_BRANCH ?: '').endsWith('carta-digital-node') }
+        expression { currentBuild.currentResult == 'SUCCESS' && env.BRANCH_NAME == 'produccion' }
       }
       steps {
         sh '''

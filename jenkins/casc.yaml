@@ -1,7 +1,7 @@
 # Jenkins Configuration as Code: la instancia se crea ya configurada (usuario, job y herramientas), sin pasos manuales.
 jenkins:
   systemMessage: "Pipeline de la carta digital PNK (INACAP La Serena) - filtro de seguridad OWASP / MITRE"
-  numExecutors: 2
+  numExecutors: 1   # un build a la vez: las tres ramas comparten el ambiente QA efimero
   securityRealm:
     local:
       allowsSignup: false
@@ -16,19 +16,20 @@ unclassified:
     url: "${JENKINS_URL:-http://localhost:8081/}"
 jobs:
   - script: >
-      pipelineJob('carta-digital') {
-        description('Dev -> QA (IA) -> filtro de seguridad (OWASP / MITRE) -> despliegue automatico a produccion')
-        definition {
-          cpsScm {
-            scm {
+      multibranchPipelineJob('carta-digital') {
+        description('Ramas: carta-digital-node (desarrollo), qa y produccion. Solo "produccion" despliega, y unicamente si pasan todos los filtros.')
+        branchSources {
+          branchSource {
+            source {
               git {
-                remote { url("${REPO_URL}") }
-                branches("*/${REPO_BRANCH:-carta-digital-node}")
+                id('carta-digital')
+                remote("${REPO_URL}")
+                traits { gitBranchDiscovery() }
               }
             }
-            scriptPath('Jenkinsfile')
-            lightweight(false)
           }
         }
-        triggers { scm('H/5 * * * *') }
+        factory { workflowBranchProjectFactory { scriptPath('Jenkinsfile') } }
+        orphanedItemStrategy { discardOldItems { numToKeep(10) } }
+        triggers { periodicFolderTrigger { interval('5m') } }
       }

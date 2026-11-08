@@ -13,6 +13,17 @@ Preparar ─► Desarrollo (eslint + SAST) ─► QA ambiente efímero ─► Je
               └─ OWASP ZAP baseline  DAST contra el ambiente QA (reglas FAIL en security/zap-rules.conf)
 ```
 
+## Ramas y ambientes
+
+| Rama | Ambiente | Jenkins |
+|---|---|---|
+| `carta-digital-node` | Desarrollo (cambio de stack) | lint + SAST, QA con IA y filtro de seguridad; **no despliega** |
+| `qa` | QA | igual que desarrollo; valida la versión antes de pasar a producción |
+| `produccion` | Producción | todo lo anterior y, **solo si todo pasa**, despliegue automático |
+
+Flujo: se programa en `carta-digital-node` → se promueve a `qa` → se promueve a `produccion`. El job de Jenkins es *multibranch*
+(`jenkins/casc.yaml`): cada rama corre su propia pipeline. En AWS, `infra/aws-user-data.sh` clona la rama `produccion`.
+
 ## Plugins y herramientas
 
 | Requisito | Qué se usa | Dónde |
@@ -50,6 +61,6 @@ Capturas en `docs/evidencias/jenkins/` (historial con Stage View, build aprobado
 ## Riesgos conocidos (honestos)
 
 - Jenkins corre como root con `docker.sock` montado: quien controle un job controla el host. Aceptable en el laboratorio; en un entorno real usar agentes aislados y un registro de imágenes.
-- Certificado TLS autofirmado (sin dominio): el navegador avisa; Cloudflare queda documentado en `docs/CLOUDFLARE.md` como paso pendiente.
+- Certificado TLS autofirmado (sin dominio): el navegador avisa; Cloudflare se configura más adelante, cuando haya dominio (guía lista en `docs/CLOUDFLARE.md`).
 - Las advertencias de ZAP (COEP, cache, comentarios) son informativas y no bloquean; las reglas `FAIL` sí.
 - `npm audit --omit=dev` informa 4 vulnerabilidades *moderate*; la política bloquea solo alto/crítico (CVSS ≥ 7), las medias quedan registradas en `reports/resumen-pipeline.md`.

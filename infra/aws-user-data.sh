@@ -6,7 +6,7 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
 REPO="https://github.com/matiasNon/pnkSecurity.git"
-RAMA="carta-digital-node"
+RAMA="produccion"
 DIR="/opt/carta-digital"
 
 # 1) Docker (repositorio oficial)
