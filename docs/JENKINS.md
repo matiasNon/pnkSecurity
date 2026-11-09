@@ -44,6 +44,7 @@ docker compose -p pnk-jenkins -f docker-compose.jenkins.yml up -d --build   # ht
 
 - Jenkins se configura solo (Configuration as Code, `jenkins/casc.yaml`): usuario `admin`, contraseña por variable, job `carta-digital` ya creado.
 - Los secretos de producción (`.env.prod`, `carta.crt`, `carta.key`) viven **fuera del repositorio**, en `/var/jenkins_home/pnk-secretos`.
+- Despliegue en AWS: guardar la IP de la EC2 en `/var/jenkins_home/pnk-secretos/ec2_host` y autorizar la llave pública `id_deploy.pub` de Jenkins en `~/.ssh/authorized_keys` de la EC2; sin `ec2_host` despliega en el Docker local.
 - Para activar OWASP Dependency-Check: guardar una NVD API key gratuita en `/var/jenkins_home/pnk-secretos/nvd_api_key`; sin ella la etapa se omite.
 - Notificación por correo: definir `NOTIFY_EMAIL` y un SMTP; sin eso el rechazo se informa en la consola, el Stage View y `resumen-pipeline.md`.
 

@@ -190,7 +190,20 @@ pipeline {
         expression { currentBuild.currentResult == 'SUCCESS' && env.BRANCH_NAME == 'produccion' }
       }
       steps {
+        // Con $SECRETOS/ec2_host (IP o nombre de la EC2) se despliega en AWS por SSH con una llave exclusiva de Jenkins
+        // (id_deploy, fuera del repositorio); sin ese archivo se despliega en el Docker local (laboratorio).
         sh '''
+          if [ -f $SECRETOS/ec2_host ]; then
+            HOST=$(tr -d '[:space:]' < $SECRETOS/ec2_host)
+            SSH="ssh -i $SECRETOS/id_deploy -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$SECRETOS/known_hosts -o ConnectTimeout=15 ubuntu@$HOST"
+            echo "Desplegando en AWS ($HOST)"
+            $SSH "cd /opt/carta-digital && sudo git fetch -q origin produccion && sudo git reset -q --hard origin/produccion && sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build"
+            for i in $(seq 1 30); do
+              curl -sk -m 10 https://$HOST/health | grep -q '"ok"' && { echo "Produccion (AWS) OK"; exit 0; }
+              sleep 5
+            done
+            echo "AWS no respondio /health"; $SSH "sudo docker compose -f /opt/carta-digital/docker-compose.yml -f /opt/carta-digital/docker-compose.prod.yml logs --tail 30" || true; exit 1
+          fi
           test -f $SECRETOS/.env.prod && test -f $SECRETOS/carta.crt && test -f $SECRETOS/carta.key || { echo "Faltan secretos en $SECRETOS"; exit 1; }
           cp $SECRETOS/.env.prod .env.prod
           bash infra/cargar-certificado.sh $SECRETOS/carta.crt $SECRETOS/carta.key
