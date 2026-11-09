@@ -1,0 +1,263 @@
+/* =====================================================================================================
+   PANEL DE ADMINISTRACION MODERNO (nov-2026). Se carga DESPUES de carta-moderna.css y reutiliza sus tokens
+   (--cm-*), botones (.cm-btn), encabezado (.cm-header) y pie (.cm-pie). Aqui solo lo propio del panel.
+   ===================================================================================================== */
+
+/* ---------- Encabezado del panel ---------- */
+.adm-marca { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.adm-marca-texto { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.adm-marca-titulo { color: #fff; font-weight: 800; font-size: 16px; }
+.adm-marca-sub { color: rgba(255, 255, 255, 0.72); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cm-header .cm-saludo { color: rgba(255, 255, 255, 0.85); }
+
+.adm-nav {
+	background: var(--cm-azul);
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.adm-nav-fila {
+	display: flex;
+	gap: 4px;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.adm-nav-fila::-webkit-scrollbar { display: none; }
+.adm-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 48px;
+	padding: 0 18px;
+	color: rgba(255, 255, 255, 0.78);
+	font-weight: 700;
+	white-space: nowrap;
+	border-bottom: 3px solid transparent;
+	transition: color 0.18s var(--cm-ease), border-color 0.18s var(--cm-ease), background-color 0.18s var(--cm-ease);
+}
+.adm-tab:hover { color: #fff; text-decoration: none; background: rgba(255, 255, 255, 0.06); }
+.adm-tab.activa { color: #fff; border-bottom-color: var(--cm-verde-claro); }
+.adm-tab:focus-visible { outline: 3px solid #ffbe0f; outline-offset: -3px; }
+
+.adm-main { padding: 32px 0 56px; flex: 1 0 auto; }
+
+/* ---------- Resumen ---------- */
+.adm-bienvenida h1 {
+	font-size: clamp(28px, 4vw, 40px);
+	font-weight: 900;
+	letter-spacing: -0.02em;
+	color: var(--cm-azul);
+	margin: 0 0 6px;
+}
+.adm-bienvenida p { color: var(--cm-texto-suave); font-size: 17px; margin: 0 0 28px; }
+.adm-kpis {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 20px;
+}
+.adm-kpi {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	grid-template-areas: "icono cuerpo" "acciones acciones";
+	gap: 16px 18px;
+	align-items: center;
+	background: #fff;
+	border: 1px solid var(--cm-borde);
+	border-radius: var(--cm-radio);
+	padding: 22px;
+	transition: transform 0.2s var(--cm-ease), box-shadow 0.2s var(--cm-ease);
+}
+.adm-kpi:hover { transform: translateY(-3px); box-shadow: var(--cm-sombra); }
+.adm-kpi-icono {
+	grid-area: icono;
+	display: grid;
+	place-items: center;
+	width: 56px;
+	height: 56px;
+	border-radius: 16px;
+	font-size: 24px;
+	background: var(--cm-azul-100);
+	color: var(--cm-azul);
+}
+.adm-kpi-productos .adm-kpi-icono { background: #e3f6ea; color: var(--cm-verde-precio); }
+.adm-kpi-categorias .adm-kpi-icono { background: #eaeefe; color: #2d46a8; }
+.adm-kpi-cuerpo { grid-area: cuerpo; }
+.adm-kpi-numero { display: block; font-size: 40px; font-weight: 900; line-height: 1; color: var(--cm-texto); }
+.adm-kpi-nombre { font-size: 16px; font-weight: 700; color: var(--cm-texto-suave); margin: 4px 0 0; }
+.adm-kpi-acciones { grid-area: acciones; display: flex; gap: 8px; flex-wrap: wrap; }
+.adm-consejos {
+	margin-top: 32px;
+	background: var(--cm-azul-100);
+	border-radius: var(--cm-radio);
+	padding: 20px 24px;
+}
+.adm-consejos h2 { font-size: 18px; font-weight: 800; color: var(--cm-azul); margin: 0 0 8px; }
+.adm-consejos ul { margin: 0; padding-left: 20px; list-style: disc; color: var(--cm-texto); }
+.adm-consejos li + li { margin-top: 4px; }
+
+/* ---------- Titulos de pagina ---------- */
+.adm-titulo-fila {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-bottom: 20px;
+}
+.adm-titulo { font-size: clamp(26px, 3.5vw, 36px); font-weight: 900; letter-spacing: -0.02em; color: var(--cm-azul); margin: 0; }
+.adm-subtitulo { color: var(--cm-texto-suave); margin: 2px 0 0; }
+.adm-volver { display: inline-block; font-weight: 700; color: var(--cm-azul-600); margin-bottom: 4px; }
+.adm-aviso { border-radius: 14px; }
+
+/* ---------- Tarjeta contenedora y tabla ---------- */
+.adm-tarjeta {
+	background: #fff;
+	border: 1px solid var(--cm-borde);
+	border-radius: var(--cm-radio);
+	padding: 18px;
+}
+.adm-herramientas { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.adm-buscar {
+	width: min(320px, 100%);
+	min-height: 44px;
+	border: 1px solid var(--cm-borde);
+	border-radius: 999px;
+	padding: 0 18px;
+	background: var(--cm-fondo);
+	color: var(--cm-texto);
+}
+.adm-buscar:focus { outline: none; border-color: var(--cm-azul-600); box-shadow: 0 0 0 3px rgba(21, 101, 168, 0.2); background: #fff; }
+.adm-tabla { width: 100%; border-collapse: separate; border-spacing: 0; }
+.adm-tabla th {
+	font-size: 13px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--cm-texto-suave);
+	font-weight: 700;
+	padding: 10px 12px;
+	border-bottom: 2px solid var(--cm-borde);
+	white-space: nowrap;
+}
+.adm-tabla td { padding: 12px; border-bottom: 1px solid var(--cm-borde); vertical-align: middle; color: var(--cm-texto); }
+.adm-tabla tbody tr { transition: background-color 0.15s var(--cm-ease); }
+.adm-tabla tbody tr:hover { background: var(--cm-fondo); }
+.adm-tabla tbody tr:last-child td { border-bottom: 0; }
+.adm-mini { width: 56px; height: 56px; object-fit: cover; border-radius: 12px; background: var(--cm-azul-100); display: block; }
+.adm-estado {
+	display: inline-block;
+	padding: 3px 12px;
+	border-radius: 999px;
+	font-size: 13px;
+	font-weight: 700;
+}
+.adm-estado.si { background: #e3f6ea; color: var(--cm-verde-precio); }
+.adm-estado.no { background: #eef1f5; color: #4a5d73; }
+.adm-moneda { font-weight: 800; color: var(--cm-verde-precio); white-space: nowrap; }
+.adm-acciones { white-space: nowrap; text-align: right; }
+.adm-acciones .cm-btn { min-height: 40px; padding: 0 16px; font-size: 14px; }
+.adm-acciones .cm-btn + .cm-btn { margin-left: 6px; }
+.adm-btn-editar { background: var(--cm-azul-100); color: var(--cm-azul); }
+.adm-btn-editar:hover { background: var(--cm-azul); color: #fff; }
+.adm-btn-peligro { background: #fdecec; color: #a3201d; }
+.adm-btn-peligro:hover { background: #f8d4d3; color: #8a1a18; }
+.adm-btn-peligro.armado { background: #b42318; color: #fff; }
+
+/* Celular: cada fila se vuelve una tarjeta con etiquetas (data-label). */
+@media (max-width: 719.98px) {
+	.adm-tabla thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+	.adm-tabla, .adm-tabla tbody, .adm-tabla tr, .adm-tabla td { display: block; width: 100%; }
+	.adm-tabla tbody tr[hidden] { display: none; }
+	.adm-tabla tr { border: 1px solid var(--cm-borde); border-radius: 14px; padding: 8px 12px; margin-bottom: 12px; }
+	.adm-tabla td { border: 0; padding: 6px 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+	.adm-tabla td::before { content: attr(data-label); font-weight: 700; color: var(--cm-texto-suave); font-size: 13px; }
+	.adm-tabla td.vacio::before { content: none; }
+	.adm-acciones { text-align: left; }
+	.adm-buscar { width: 100%; }
+	.cm-header .cm-saludo, .adm-marca-texto { display: none; }
+}
+
+/* ---------- Formulario ---------- */
+.adm-form-grilla {
+	display: grid;
+	grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+	gap: 20px;
+	align-items: start;
+}
+.adm-form-grilla > :only-child { grid-column: 1 / -1; max-width: 760px; }
+@media (max-width: 899.98px) { .adm-form-grilla { grid-template-columns: 1fr; } .adm-form-lateral { order: -1; } }
+.adm-form-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 18px; padding: 22px; }
+@media (max-width: 599.98px) { .adm-form-campos { grid-template-columns: 1fr; } }
+.adm-campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.adm-campo:has(select), .adm-campo:has(#f-nombre), .adm-campo:has(#f-descripcion), .adm-campo:has(#f-observaciones) { grid-column: 1 / -1; }
+.adm-campo label { font-weight: 700; color: var(--cm-azul); margin: 0; font-size: 14px; }
+.adm-requerido { color: #b42318; }
+.adm-campo .form-control {
+	min-height: 46px;
+	border-radius: 12px;
+	border-color: var(--cm-borde);
+	color: var(--cm-texto);
+}
+.adm-campo .form-control:focus { border-color: var(--cm-azul-600); box-shadow: 0 0 0 3px rgba(21, 101, 168, 0.2); }
+.adm-error { color: #b42318; font-weight: 600; }
+
+/* Interruptor: la casilla real con otro aspecto (sigue siendo clicable y accesible). */
+.adm-switch { display: flex; align-items: center; gap: 12px; grid-column: 1 / -1; min-height: 44px; }
+.adm-switch label { margin: 0; font-weight: 700; color: var(--cm-texto); cursor: pointer; }
+.adm-switch-input {
+	appearance: none;
+	-webkit-appearance: none;
+	flex: 0 0 auto;
+	width: 50px;
+	height: 28px;
+	border-radius: 999px;
+	background: #c3cfdc;
+	position: relative;
+	cursor: pointer;
+	margin: 0;
+	transition: background-color 0.2s var(--cm-ease);
+}
+.adm-switch-input::after {
+	content: "";
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+	transition: transform 0.2s var(--cm-ease);
+}
+.adm-switch-input:checked { background: var(--cm-verde); }
+.adm-switch-input:checked::after { transform: translateX(22px); }
+.adm-switch-input:focus-visible { outline: 3px solid #ffbe0f; outline-offset: 2px; }
+
+/* Zona de foto con vista previa */
+.adm-form-lateral { padding: 22px; position: sticky; top: 16px; }
+.adm-foto { display: flex; flex-direction: column; gap: 10px; }
+.adm-foto-titulo { font-weight: 700; color: var(--cm-azul); font-size: 14px; }
+.adm-foto-vista {
+	width: 100%;
+	height: auto;
+	aspect-ratio: 4 / 3;
+	object-fit: cover;
+	border-radius: 14px;
+	background: var(--cm-azul-100);
+	border: 1px solid var(--cm-borde);
+}
+.adm-foto-estado { margin: 0; color: var(--cm-texto-suave); font-size: 14px; overflow-wrap: anywhere; }
+.adm-foto-boton { align-self: flex-start; cursor: pointer; }
+/* El input real queda accesible por teclado (se activa con el label) pero visualmente reemplazado por el boton. */
+.adm-foto-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.adm-foto-input:focus-visible + .adm-error,
+.adm-foto:focus-within .adm-foto-boton { outline: 3px solid #ffbe0f; outline-offset: 2px; }
+
+.adm-form-acciones {
+	display: flex;
+	gap: 10px;
+	margin-top: 20px;
+	padding: 16px 0;
+}
+.adm-form .cm-btn[disabled] { opacity: 0.7; cursor: progress; }
+
+@media (prefers-reduced-motion: reduce) {
+	.adm-kpi, .adm-tab, .adm-switch-input, .adm-switch-input::after { transition: none !important; }
+}

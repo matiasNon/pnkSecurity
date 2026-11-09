@@ -8,7 +8,7 @@ module.exports = (pool) => ({
   // ---------- Cartas ----------
   async listarCartas(rid) {
     const r = await pool.query(
-      `SELECT id, nombre, orden, visible FROM cartas
+      `SELECT id, nombre, orden, visible, foto FROM cartas
         WHERE restaurante_id = $1 AND eliminado_en IS NULL ORDER BY orden NULLS LAST, id`,
       [rid]
     );
@@ -16,7 +16,7 @@ module.exports = (pool) => ({
   },
   async obtenerCarta(rid, id) {
     const r = await pool.query(
-      `SELECT id, nombre, orden, visible FROM cartas
+      `SELECT id, nombre, orden, visible, foto FROM cartas
         WHERE id = $1 AND restaurante_id = $2 AND eliminado_en IS NULL`,
       [id, rid]
     );
@@ -24,16 +24,17 @@ module.exports = (pool) => ({
   },
   async crearCarta(rid, d) {
     const r = await pool.query(
-      'INSERT INTO cartas (nombre, orden, visible, restaurante_id) VALUES ($1, $2, $3, $4) RETURNING id',
-      [d.nombre, d.orden, d.visible, rid]
+      'INSERT INTO cartas (nombre, orden, visible, foto, restaurante_id) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [d.nombre, d.orden, d.visible, d.foto ?? null, rid]
     );
     return r.rows[0].id;
   },
   async actualizarCarta(rid, id, d) {
     const r = await pool.query(
-      `UPDATE cartas SET nombre = $3, orden = $4, visible = $5, actualizado_en = now()
+      // La foto (portada) solo cambia si se subio una nueva (d.foto === undefined la conserva).
+      `UPDATE cartas SET nombre = $3, orden = $4, visible = $5, foto = COALESCE($6, foto), actualizado_en = now()
         WHERE id = $1 AND restaurante_id = $2 AND eliminado_en IS NULL`,
-      [id, rid, d.nombre, d.orden, d.visible]
+      [id, rid, d.nombre, d.orden, d.visible, d.foto === undefined ? null : d.foto]
     );
     return r.rowCount > 0;
   },

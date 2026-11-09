@@ -192,7 +192,12 @@
     const contenido = el('div', { class: 'tab-content cm-paneles', id: 'nav-tabContent' },
       lista.map((p, i) => el('div', {
         class: `tab-pane fade${i === inicial ? ' show active' : ''}`, id: `carta-${p.id}`, role: 'tabpanel', 'aria-labelledby': `nav-carta-${p.id}-tab`,
-      }, p.categorias.length === 0
+      },
+      // Portada de la carta (foto subida desde el panel): banner con el nombre encima.
+      urlSegura(p.foto, null) ? el('div', { class: 'cm-portada' },
+        el('img', { src: urlSegura(p.foto, null), alt: '', width: '1180', height: '300', loading: i === inicial ? 'eager' : 'lazy' }),
+        el('span', { class: 'cm-portada-nombre', text: p.nombre })) : null,
+      p.categorias.length === 0
         ? el('p', { class: 'vacio', text: 'No hay información para Mostrar' })
         : p.categorias.map((cat) => el('div', { class: 'cm-categoria' },
           el('h3', { class: 'cm-categoria-titulo', text: cat.nombre }),

@@ -71,6 +71,7 @@ module.exports = (modelos) => {
         cartas: cartas.map((c) => ({
           id: c.id,
           nombre: c.nombre,
+          foto: rutaFoto(rid, c.foto),
           categorias: c.categorias.map((k) => ({
             id: k.id,
             nombre: k.nombre,

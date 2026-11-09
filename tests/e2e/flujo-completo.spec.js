@@ -122,7 +122,7 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
     await captura(page, '08-admin-formulario');
     await page.getByRole('button', { name: 'Guardar' }).click();
     await expect(page.getByText('Registro creado.')).toBeVisible();
-    await expect(page.getByRole('cell', { name: `Plato e2e ${sufijo}` })).toBeVisible();
+    await expect(page.getByRole('cell', { name: `Plato e2e ${sufijo}`, exact: true })).toBeVisible();
 
     await page.goto('/restaurantes/1');
     await page.getByRole('tab', { name: 'Principales' }).click(); // el producto esta en la carta "Principales"
@@ -140,7 +140,10 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
     await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
     await page.goto('/admin/productos');
     const fila = page.locator('tr', { hasText: `Plato e2e ${sufijo}` });
+    // Eliminacion en dos pasos: el primer clic pide confirmacion en el mismo boton (sin ventanas emergentes).
     await fila.getByRole('button', { name: 'Eliminar' }).click();
+    await expect(fila.getByRole('button', { name: /Confirmar eliminación/ })).toHaveText('¿Confirmar?');
+    await fila.getByRole('button', { name: /Confirmar eliminación/ }).click();
     await expect(page.getByText('Registro eliminado.')).toBeVisible();
     await page.goto('/restaurantes/1');
     await expect(page.getByText(`Plato e2e ${sufijo}`)).toHaveCount(0);

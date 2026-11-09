@@ -153,6 +153,61 @@ describe('RF-06 CRUD de cartas, categorias y productos', () => {
   });
 });
 
+describe('Fotos: portada de las cartas y miniaturas del panel', () => {
+  test('una carta acepta foto de portada: se ve en la lista del panel y en la carta publica', async () => {
+    const s = await adminUno();
+    const alta = await crear(s, 'cartas', { nombre: 'QA Carta Portada', visible: 'on' }, { buffer: PNG, filename: 'p.png', contentType: 'image/png' });
+    expect(alta.status).toBe(201);
+    const foto = (await env.pool.query('SELECT foto FROM cartas WHERE id = $1', [alta.body.id])).rows[0].foto;
+    expect(foto).toMatch(/^[a-f0-9]{32}\.png$/);
+
+    const lista = await s.agente.get('/api/admin/cartas');
+    const fila = lista.body.filas.find((f) => f.id === alta.body.id);
+    expect(fila.fotoUrl).toBe(`/uploads/cod1/${foto}`);
+    expect(fila.foto).toBeUndefined(); // nunca el nombre crudo
+
+    const publica = (await cartaPublica()).cartas.find((c) => c.id === alta.body.id);
+    expect(publica.foto).toBe(`/uploads/cod1/${foto}`);
+  });
+
+  test('editar una carta sin subir foto conserva la portada; subir otra la reemplaza y borra la anterior', async () => {
+    const s = await adminUno();
+    const id = (await crear(s, 'cartas', { nombre: 'QA Carta Cambio', visible: 'on' }, { buffer: PNG, filename: 'a.png', contentType: 'image/png' })).body.id;
+    const primera = (await env.pool.query('SELECT foto FROM cartas WHERE id = $1', [id])).rows[0].foto;
+    await actualizar(s, 'cartas', id, { nombre: 'QA Carta Cambio', visible: 'on' });
+    expect((await env.pool.query('SELECT foto FROM cartas WHERE id = $1', [id])).rows[0].foto).toBe(primera);
+
+    await actualizar(s, 'cartas', id, { nombre: 'QA Carta Cambio', visible: 'on' }, { buffer: PNG, filename: 'b.png', contentType: 'image/png' });
+    const segunda = (await env.pool.query('SELECT foto FROM cartas WHERE id = $1', [id])).rows[0].foto;
+    expect(segunda).not.toBe(primera);
+    expect(fs.existsSync(path.join(UPLOAD_DIR, 'cod1', primera))).toBe(false);
+    expect(fs.existsSync(path.join(UPLOAD_DIR, 'cod1', segunda))).toBe(true);
+  });
+
+  test('la portada de una carta tambien valida el contenido (un script con extension .png se rechaza)', async () => {
+    const s = await adminUno();
+    const r = await crear(s, 'cartas', { nombre: 'QA Carta Mala', visible: 'on' },
+      { buffer: Buffer.from('<?php echo 1; ?>'), filename: 'x.png', contentType: 'image/png' });
+    expect(r.status).toBe(400);
+    expect(r.body.errores.foto).toContain('imagen JPG, PNG, GIF o WEBP');
+    expect((await env.pool.query("SELECT 1 FROM cartas WHERE nombre = 'QA Carta Mala'")).rowCount).toBe(0);
+  });
+
+  test('la lista de productos entrega la miniatura como URL validada', async () => {
+    const { agente } = await adminUno();
+    const r = await agente.get('/api/admin/productos');
+    const lomo = r.body.filas.find((f) => f.id === 5);
+    expect(lomo.fotoUrl).toBe('/imagenes/cod1/item5.jpg');
+    expect(r.body.multipart).toBe(true);
+  });
+
+  test('las categorias no tienen foto: su lista no trae fotoUrl', async () => {
+    const { agente } = await adminUno();
+    const r = await agente.get('/api/admin/categorias');
+    expect(r.body.filas[0].fotoUrl).toBeUndefined();
+  });
+});
+
 describe('ASVS V8.2 IDOR: un administrador no toca datos de otro restaurante', () => {
   test.each([
     ['carta', '/api/admin/cartas/10'],

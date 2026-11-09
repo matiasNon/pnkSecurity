@@ -22,7 +22,7 @@ module.exports = (pool) => ({
   // Tres consultas en total (no una por categoria como en la version PHP).
   async arbolPublico(restauranteId) {
     const cartas = (await pool.query(
-      `SELECT id, nombre FROM cartas
+      `SELECT id, nombre, foto FROM cartas
         WHERE restaurante_id = $1 AND visible AND eliminado_en IS NULL
         ORDER BY orden NULLS LAST, id`,
       [restauranteId]

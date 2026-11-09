@@ -22,6 +22,7 @@ module.exports = (modelos, subidas) => {
       nuevo: 'Nueva',
       plural: 'Cartas',
       esquema: esquemaCarta,
+      multipart: true,
       columnas: [
         { campo: 'nombre', titulo: 'Nombre' },
         { campo: 'orden', titulo: 'Orden' },
@@ -36,6 +37,7 @@ module.exports = (modelos, subidas) => {
         { nombre: 'nombre', etiqueta: 'Nombre de la carta', tipo: 'text', max: 45, requerido: true },
         { nombre: 'orden', etiqueta: 'Orden', tipo: 'number', min: 0, max: 9999 },
         { nombre: 'visible', etiqueta: 'Visible en la carta', tipo: 'checkbox' },
+        { nombre: 'foto', etiqueta: 'Foto de portada (JPG, PNG, GIF o WEBP)', tipo: 'file' },
       ],
       porDefecto: { visible: true },
     },
@@ -144,7 +146,12 @@ module.exports = (modelos, subidas) => {
   async function lista(req, res, next) {
     try {
       const filas = await req.recurso.listar(req.usuario.restaurante_id);
-      res.json({ ...meta(req.recurso, req.nombreRecurso), filas: filas.map(({ foto: _foto, ...f }) => f) });
+      // La foto se entrega como URL validada (miniatura en la lista), nunca el nombre crudo del archivo.
+      const rid = req.usuario.restaurante_id;
+      res.json({
+        ...meta(req.recurso, req.nombreRecurso),
+        filas: filas.map(({ foto, ...f }) => (req.recurso.multipart ? { ...f, fotoUrl: rutaFoto(rid, foto) } : f)),
+      });
     } catch (e) { next(e); }
   }
 
