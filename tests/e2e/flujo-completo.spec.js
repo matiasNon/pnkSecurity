@@ -22,10 +22,13 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
 
     await page.goto('/restaurantes/1');
     await expect(page.getByRole('heading', { name: 'Afríca Restobar' })).toBeVisible();
-    await expect(page.getByText('Menús Destacados')).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Seleccionar' }).first()).toBeVisible();
-    await expect(page.locator('.owl-carousel .owl-item').first()).toBeVisible(); // el carrusel se inicializo (JS + CSP sin inline)
-    await expect(page.getByText('$ 12.500').first()).toBeVisible();
+    await expect(page.locator('.cm-slide.activa').getByText('Menús Destacados')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Seleccionar' }).first()).toBeVisible();
+    await expect(page.locator('.cm-slide.activa')).toBeVisible(); // el hero de destacados se armo (JS + CSP sin inline)
+    await expect(page.locator('.cm-mini')).toHaveCount(3);
+    // Formato de moneda chilena en el precio del destacado visible y en la carta abierta (Bebidas: Pisco Sour).
+    await expect(page.locator('.cm-slide.activa .price-tag')).toHaveText('$ 2.000');
+    await expect(page.getByText('$ 3.500').filter({ visible: true }).first()).toBeVisible();
     await captura(page, '01-carta');
     expect(errores, 'sin errores de consola ni violaciones de CSP').toEqual([]);
   });
