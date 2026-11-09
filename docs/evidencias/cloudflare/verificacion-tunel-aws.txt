@@ -1,0 +1,36 @@
+Cloudflare Tunnel rapido desplegado en la EC2 (carta-digital-prod) - 2026-11-09T17:30Z
+URL publica (temporal): https://technological-cache-mitchell-dev.trycloudflare.com
+
+## /health
+{"estado":"ok"} [200]
+
+## Cabeceras (Server: cloudflare, CF-Ray = pasa por Cloudflare)
+HTTP/1.1 200 OK
+Date: Mon, 09 Nov 2026 17:30:31 GMT
+Content-Type: text/html; charset=utf-8
+Connection: keep-alive
+CF-Ray: a57e8bb82f5a2f8c-SCL
+CF-Cache-Status: DYNAMIC
+Cache-Control: no-store
+Server: cloudflare
+Set-Cookie: PNKSESSID=<id>; Path=/; HttpOnly; Secure; SameSite=Strict
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Robots-Tag: none
+X-Robots-Tag: none
+content-security-policy: default-src 'self';script-src 'self';style-src 'self';font-src 'self' data:;img-src 'self' data:;connect-src 'self';object-src 'none';base-uri 'self';form-action 'self';frame-ancestors 'none'
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: same-origin
+origin-agent-cluster: ?1
+permissions-policy: geolocation=(), camera=(), microphone=()
+referrer-policy: strict-origin-when-cross-origin
+x-content-type-options: nosniff
+x-dns-prefetch-control: off
+x-download-options: noopen
+x-frame-options: DENY
+x-permitted-cross-domain-policies: none
+x-xss-protection: 0
+
+## Inyeccion SQL en id
+404
+## /admin sin sesion
+403
