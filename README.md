@@ -32,8 +32,11 @@ Cuentas de demostración (solo dev/QA): `admin@gmail.com` / `admin01` (administr
 `POST /login` · `POST /logout` · `/admin/{cartas,categorias,productos}` · `GET /health`. Los enlaces antiguos `/index.php?id=N` redirigen.
 
 ## Despliegue en AWS
-EC2 nueva (Ubuntu) con Security Group 22 (solo tu IP), 80 y 443; ejecutar `infra/aws-user-data.sh` (instala Docker, clona esta rama,
-genera secretos y certificado, levanta producción). La instancia de la entrega anterior (Apache + PHP) no se modifica.
+EC2 nueva (Ubuntu) con Security Group 22 (solo tu IP), 80 y 443 y una **Elastic IP** (para que la IP no cambie al reiniciar); ejecutar
+`infra/aws-user-data.sh` (instala Docker, clona la rama `produccion`, genera secretos y certificado, levanta producción).
+Después, cada push a `produccion` que pase la pipeline se despliega solo: Jenkins entra por SSH con una llave exclusiva
+(`docs/JENKINS.md`) y actualiza la EC2. Si la IP cambia, actualizar `PUBLIC_HOST` en `.env.prod`, regenerar el certificado
+(`infra/generar-certificado.sh <IP>` + `infra/cargar-certificado.sh`) y el archivo `ec2_host` de Jenkins.
 
 ## Pipeline Jenkins (4.ª entrega)
 Ramas: `carta-digital-node` (desarrollo), `qa` y `produccion`; solo `produccion` despliega.

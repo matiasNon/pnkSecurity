@@ -56,12 +56,14 @@ docker compose -p pnk-jenkins -f docker-compose.jenkins.yml up -d --build   # ht
 | #2 | **rechazado** | OSV/npm audit marcaron `uuid` y Trivy 6 CVE HIGH en el `npm` incluido en la imagen → se aplicó `override` de `uuid` y se quitó npm de la imagen runtime |
 | #3 | aprobado | despliegue automático a producción (HTTPS 200, HTTP→301) |
 | #4 | aprobado | ZAP escanea de verdad: 0 FAIL, 5 WARN informativos, 63 PASS; informe `zap.html` archivado; producción actualizada |
+| `produccion` #3 | aprobado | despliegue automático **en AWS por SSH**: Jenkins actualiza la EC2 (commit `97ed566`) y confirma `/health` por HTTPS |
 | #5 | **rechazado** | commit de prueba con `lodash@4.17.15`: npm audit, OSV y Trivy lo detectan (CVE-2020-8203, CVE-2021-23337…), «Despliegue a producción» queda *skipped* |
 
 Capturas en `docs/evidencias/jenkins/` (historial con Stage View, build aprobado, build rechazado, informe ZAP, informe QA, consola del rechazo).
 
 ## Riesgos conocidos (honestos)
 
+- La llave SSH de despliegue (`id_deploy`) vive solo en el volumen de Jenkins; en la EC2 solo está la pública. Si se compromete Jenkins, se compromete esa llave: rotarla quitando su línea de `~/.ssh/authorized_keys`.
 - Jenkins corre como root con `docker.sock` montado: quien controle un job controla el host. Aceptable en el laboratorio; en un entorno real usar agentes aislados y un registro de imágenes.
 - Certificado TLS autofirmado (sin dominio): el navegador avisa; Cloudflare se configura más adelante, cuando haya dominio (guía lista en `docs/CLOUDFLARE.md`).
 - Las advertencias de ZAP (COEP, cache, comentarios) son informativas y no bloquean; las reglas `FAIL` sí.
