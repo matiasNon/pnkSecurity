@@ -16,6 +16,7 @@
     "test": "jest --runInBand",
     "test:e2e": "playwright test",
     "audit": "npm audit --omit=dev --audit-level=high",
+    "deprecadas": "node scripts/revisar-deprecadas.js",
     "qa": "bash scripts/qa.sh"
   },
   "dependencies": {

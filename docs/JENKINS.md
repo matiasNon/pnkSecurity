@@ -8,6 +8,7 @@ Preparar ─► Desarrollo (eslint + SAST) ─► QA ambiente efímero ─► Je
         ─► Filtro de seguridad (en paralelo) ─► Despliegue a producción (solo si TODO es verde)
               ├─ Gitleaks            secretos en el repositorio
               ├─ npm audit + OSV     librerías con CVE alto/crítico o deprecadas (CVSS ≥ 7 bloquea)
+              ├─ Librerías deprecadas  rechaza si una dependencia de producción está deprecated en npm
               ├─ OWASP Dependency-Check   cruce con la NVD (CVE/CWE de MITRE); requiere NVD API key
               ├─ Trivy               CVE y CWE de la imagen Docker (HIGH/CRITICAL con parche)
               └─ OWASP ZAP baseline  DAST contra el ambiente QA (reglas FAIL en security/zap-rules.conf)

@@ -121,6 +121,14 @@ pipeline {
             }
           }
         }
+        stage('Librerias deprecadas') {
+          steps {
+            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+              // Rechaza el despliegue si una dependencia de produccion esta marcada como deprecated en npm.
+              sh 'node scripts/revisar-deprecadas.js'
+            }
+          }
+        }
         stage('OWASP Dependency-Check') {
           when { expression { fileExists("${env.SECRETOS}/nvd_api_key") } }
           steps {
