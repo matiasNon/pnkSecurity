@@ -1,4 +1,22 @@
-# Cloudflare como capa de seguridad (preparado; pendiente de dominio)
+# Cloudflare como capa de seguridad (tunel rapido listo; WAF al tener dominio)
+
+## Opcion A: Cloudflare Tunnel rapido (sin dominio ni cuenta)
+
+`docker-compose.cloudflare.yml` agrega un contenedor `cloudflared` que abre una conexion **saliente** hacia Cloudflare y entrega una URL
+`https://<palabras>.trycloudflare.com` con certificado valido; el trafico pasa por la red de Cloudflare antes de llegar a nginx.
+
+```bash
+C="docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cloudflare.yml"
+$C up -d --build
+$C logs cloudflared | grep trycloudflare      # muestra la URL publica
+```
+
+- nginx toma la IP real del visitante de `CF-Connecting-IP` **solo** si la conexion viene de la red interna de Docker (no es falsificable desde internet).
+- `--no-tls-verify` se usa solo entre `cloudflared` y nginx (misma red interna, certificado autofirmado).
+- Limitaciones: la URL cambia al reiniciar y el tunel rapido no ofrece WAF ni reglas de tasa de Cloudflare (eso requiere dominio, opcion B).
+
+## Opcion B: dominio propio (WAF, SSL Full strict, reglas)
+
 
 Cloudflare solo protege dominios que pasan por sus servidores DNS. Como el proyecto se despliega **solo con IP publica de AWS**
 (sin dominio), el proxy no se puede activar todavia. La aplicacion ya esta lista; al contar con un dominio se hace asi:

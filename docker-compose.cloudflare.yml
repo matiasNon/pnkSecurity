@@ -1,0 +1,19 @@
+# Cloudflare Tunnel rapido (sin dominio ni cuenta): publica la carta por la red de Cloudflare con una URL
+# https://<palabras>.trycloudflare.com y certificado valido. La conexion sale desde el servidor hacia Cloudflare.
+# Uso (sobre produccion):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cloudflare.yml up -d --build
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cloudflare.yml logs cloudflared | grep trycloudflare
+# La URL cambia en cada reinicio. Con dominio propio se pasa a un tunel con nombre + WAF (ver docs/CLOUDFLARE.md).
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    restart: unless-stopped
+    depends_on:
+      nginx:
+        condition: service_started
+    # El origen (nginx) usa certificado autofirmado y esta en la red interna de Docker: por eso --no-tls-verify solo aqui.
+    command: tunnel --no-autoupdate --url https://nginx:443 --no-tls-verify
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [interna]
