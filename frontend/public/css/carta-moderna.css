@@ -213,6 +213,48 @@ a.button.cm-btn { padding-top: 0; padding-bottom: 0; text-transform: none; }
 	overflow: hidden;
 }
 .cm-hero-info { margin-bottom: 28px; }
+
+/* Franja de fotos del hero: las imagenes traen el tercio izquierdo oscuro para el texto. */
+.cm-banner {
+	position: relative;
+	isolation: isolate;
+	display: flex;
+	align-items: center;
+	min-height: clamp(190px, 25vw, 290px);
+	padding: 24px clamp(18px, 4vw, 44px);
+	margin-bottom: 32px;
+	border-radius: 18px;
+	overflow: hidden;
+	background: var(--cm-azul-900);
+	box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+.cm-banner-img {
+	position: absolute;
+	inset: 0;
+	z-index: -2;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: right center;
+	opacity: 0;
+	transition: opacity 0.9s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.cm-banner-img.activa { opacity: 1; }
+.cm-banner::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background: linear-gradient(90deg, rgba(6, 18, 38, 0.82) 0%, rgba(6, 18, 38, 0.5) 42%, rgba(6, 18, 38, 0) 72%);
+}
+.cm-banner .cm-hero-info { margin: 0; max-width: 58%; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55); }
+@media (max-width: 720px) {
+	.cm-banner { align-items: flex-end; }
+	.cm-banner-img { object-position: 72% center; }
+	.cm-banner::after { background: linear-gradient(0deg, rgba(6, 18, 38, 0.9) 0%, rgba(6, 18, 38, 0.45) 60%, rgba(6, 18, 38, 0.15) 100%); }
+	.cm-banner .cm-hero-info { max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .cm-banner-img { transition: none; } }
 .cm-restaurante {
 	font-size: clamp(28px, 4vw, 40px);
 	font-weight: 800;

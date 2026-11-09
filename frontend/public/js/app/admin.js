@@ -26,7 +26,7 @@
   // 401/403/404 de la API -> pagina de error; true si hubo error.
   function falla(r) {
     if (r.ok) return false;
-    if (r.status === 401) paginaError('Debe iniciar sesión');
+    if (r.status === 401) { location.replace('/restaurantes/1#ingresar'); return true; }
     else if (r.status === 403) paginaError('Acceso restringido');
     else if (r.status === 404) paginaError('Registro no encontrado');
     else paginaError('Ha ocurrido un error. Intente nuevamente más tarde.');

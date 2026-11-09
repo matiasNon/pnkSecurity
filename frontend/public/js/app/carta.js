@@ -8,6 +8,7 @@
   const { el, agregar, vaciar, conSaltos, moneda, urlSegura, icono, pedir, cargarSesion, estado, paginaError, ridDeUrl } = window.PNK;
   const FOTO_PRODUCTO = '/imagenes/producto.jpg';
   const ROTACION_MS = 6000;
+  const BANNERS = ['principales', 'entradas', 'bebidas', 'vinos'];
   const sinMovimiento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const rid = ridDeUrl();
@@ -35,7 +36,10 @@
     });
     // En celular el formulario se despliega desde un boton (details/summary: accesible sin JS extra).
     const ancho = window.matchMedia && window.matchMedia('(min-width: 900px)').matches;
-    return el('details', { class: 'cm-cuenta', open: ancho },
+    // /login, /login.php y el panel sin sesion redirigen con #ingresar: abrir el formulario y enfocar el correo.
+    const pedido = location.hash === '#ingresar';
+    if (pedido) setTimeout(() => usuario.focus(), 0);
+    return el('details', { class: 'cm-cuenta', id: 'ingresar', open: ancho || pedido },
       el('summary', { class: 'cm-btn cm-btn-claro', text: 'Iniciar sesión' }),
       el('div', { class: 'cm-cuenta-panel' }, form, aviso));
   }
@@ -103,8 +107,23 @@
         r.fono ? el('span', {}, icono('telefono'), ` ${r.fono}`) : null,
         r.email ? el('span', {}, icono('correo'), ` ${r.email}`) : null));
 
+    // Franja con fotos de ambiente (estaticas del frontend, no dependen de la BD) que se funden entre si.
+    const fondos = BANNERS.map((nombre, i) => el('img', {
+      class: `cm-banner-img${i === 0 ? ' activa' : ''}`, src: `/img/hero/${nombre}.webp`, alt: '',
+      width: '1024', height: '254', loading: i === 0 ? 'eager' : 'lazy', decoding: 'async',
+    }));
+    const banner = el('div', { class: 'cm-banner' }, fondos, info);
+    if (!sinMovimiento) {
+      let fondo = 0;
+      setInterval(() => {
+        fondos[fondo].classList.remove('activa');
+        fondo = (fondo + 1) % fondos.length;
+        fondos[fondo].classList.add('activa');
+      }, ROTACION_MS);
+    }
+
     if (lista.length === 0) {
-      return el('section', { class: 'cm-hero cm-hero-simple' }, el('div', { class: 'cm-contenedor' }, info));
+      return el('section', { class: 'cm-hero cm-hero-simple' }, el('div', { class: 'cm-contenedor' }, banner));
     }
 
     const diapositivas = lista.map((d, i) => el('article', {
@@ -157,7 +176,7 @@
     carrusel.addEventListener('focusout', iniciarRotacion);
     iniciarRotacion();
 
-    return el('section', { class: 'cm-hero' }, el('div', { class: 'cm-contenedor' }, info, carrusel));
+    return el('section', { class: 'cm-hero' }, el('div', { class: 'cm-contenedor' }, banner, carrusel));
   }
 
   // ---------- Cartas (pestanas tipo pildora) -> categorias -> tarjetas de producto ----------
