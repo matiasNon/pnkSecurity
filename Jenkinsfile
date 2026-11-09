@@ -204,31 +204,16 @@ pipeline {
         sh '''
           # Alta disponibilidad (infra/aws): con $SECRETOS/aws_stack (nombre del stack) y $SECRETOS/aws_credentials
           # (credenciales del Learner Lab; caducan con la sesion y se pegan de nuevo en cada sesion) se reemplazan las
-          # instancias de los dos ASG de forma escalonada (instance refresh): cada instancia nueva clona la rama produccion.
+          # instancias de los dos ASG de a una con infra/aws/actualizar.sh: cada instancia nueva clona la rama al arrancar.
+          # (AWS Academy bloquea "instance refresh" con una SCP; el reemplazo escalonado logra lo mismo sin cortar el servicio.)
           # Sin SSH: los Security Groups solo aceptan trafico del balanceador.
           if [ -f $SECRETOS/aws_stack ] && [ -f $SECRETOS/aws_credentials ]; then
             STACK=$(tr -d '[:space:]' < $SECRETOS/aws_stack)
-            AWS="docker run --rm -v $SECRETOS/aws_credentials:/root/.aws/credentials:ro -e AWS_DEFAULT_REGION=us-east-1 -e AWS_PAGER= amazon/aws-cli:2.31.0"
-            salida() { $AWS cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
-            DNS=$(salida DnsBalanceador)
-            for ASG in $(salida AsgFrontendNombre) $(salida AsgBackendNombre); do
-              echo "Instance refresh de $ASG"
-              $AWS autoscaling start-instance-refresh --auto-scaling-group-name "$ASG" \
-                --preferences '{"MinHealthyPercentage":50,"InstanceWarmup":300}' --query InstanceRefreshId --output text
-            done
-            for i in $(seq 1 90); do
-              PEND=0
-              for ASG in $(salida AsgFrontendNombre) $(salida AsgBackendNombre); do
-                E=$($AWS autoscaling describe-instance-refreshes --auto-scaling-group-name "$ASG" --max-records 1 --query 'InstanceRefreshes[0].Status' --output text)
-                echo "  $ASG: $E"
-                case "$E" in Successful) ;; Pending|InProgress) PEND=1 ;; *) echo "Instance refresh fallo ($E)"; exit 1 ;; esac
-              done
-              [ $PEND -eq 0 ] && break
-              sleep 20
-            done
-            curl -sk -m 10 https://$DNS/api/health | grep -q '"ok"' && curl -sk -m 10 -o /dev/null -w '%{http_code}' https://$DNS/restaurantes/1 | grep -q 200 \
-              && { echo "Produccion (AWS alta disponibilidad) OK: https://$DNS"; exit 0; }
-            echo "El ALB no respondio /api/health o /restaurantes/1"; exit 1
+            docker run --rm --entrypoint bash -e STACK="$STACK" -e AWS_REGION=us-east-1 \
+              -v $SECRETOS/aws_credentials:/root/.aws/credentials:ro -v "$PWD/infra/aws":/scripts:ro \
+              amazon/aws-cli:2.31.0 /scripts/actualizar.sh backend frontend \
+              && { echo "Produccion (AWS alta disponibilidad) actualizada"; exit 0; }
+            echo "Fallo la actualizacion en AWS"; exit 1
           fi
           if [ -f $SECRETOS/ec2_host ]; then
             HOST=$(tr -d '[:space:]' < $SECRETOS/ec2_host)
