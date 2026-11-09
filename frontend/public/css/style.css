@@ -3050,3 +3050,349 @@ button.button {
 .sin-margen {
 	margin: 0
 }
+
+/* =====================================================================================================
+   PULIDO (frontend separado, nov-2026). Mantiene el look de la carta PHP original (colores #0a0252 / #272e38 /
+   #e74c3c, fondo de comida, tipografia) y corrige fallos visuales y de uso. Solo agrega reglas: no cambia las
+   originales de arriba.
+   ===================================================================================================== */
+
+/* El contenido ocupa al menos la altura de la pantalla: el fondo de comida ya no asoma bajo el pie
+   en paginas cortas (panel, carrito, formularios). */
+#app {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+/* min-width: 0 evita que un hijo flex crezca segun su contenido (el carrusel ensanchaba la pagina en celular). */
+#app > * {
+	min-width: 0;
+	width: 100%;
+}
+#app > section:last-of-type {
+	flex: 1 0 auto;
+	display: flex;
+}
+#app > section:last-of-type > .contendor {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+#app > footer {
+	background: #fff;
+}
+
+/* Barra de sesion: el "@" queda pegado al campo y en celular los campos se ordenan en una grilla limpia. */
+#barra-sesion .barra-login {
+	gap: 8px;
+	flex-wrap: nowrap;
+}
+#barra-sesion .barra-login .input-group {
+	width: auto;
+}
+#barra-sesion .btn,
+#barra-sesion .form-control,
+#barra-sesion .input-group-text {
+	min-height: 44px; /* area tactil minima */
+}
+@media (max-width: 575.98px) {
+	#barra-sesion {
+		justify-content: center;
+	}
+	#barra-sesion .barra-login {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		width: 100%;
+	}
+	#barra-sesion .barra-login .input-group {
+		grid-column: 1 / -1;
+		width: 100%;
+	}
+	#barra-sesion .barra-login .input-group .form-control,
+	#barra-sesion .barra-login > .form-control {
+		width: 100%;
+	}
+	#barra-sesion .barra-saludo {
+		width: 100%;
+		text-align: center;
+	}
+}
+
+/* Pestanas de cartas: la seleccionada se distingue (rojo de la marca + flecha original) y en celular se
+   desplazan en una sola fila en vez de partirse en tres. */
+nav > div a.nav-item.nav-link.active {
+	background: #e74c3c;
+}
+nav > .nav.nav-tabs {
+	flex-wrap: nowrap;
+	overflow-x: auto;
+	scrollbar-width: thin;
+}
+nav > div a.nav-item.nav-link {
+	white-space: nowrap;
+	transition: background-color 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (max-width: 767.98px) {
+	nav > div a.nav-item.nav-link,
+	nav > div a.nav-item.nav-link.active {
+		padding: 14px 18px;
+		flex: 0 0 auto;
+	}
+	nav > div a.nav-item.nav-link.active:after {
+		display: none;
+	}
+}
+nav > div a.nav-item.nav-link:focus-visible {
+	outline: 3px solid #ffbe0f;
+	outline-offset: -3px;
+}
+
+/* Estrellas: mas grandes y legibles; las apagadas muestran el maximo (5). */
+.rating-star {
+	display: inline-flex;
+	gap: 2px;
+	margin: 6px 0;
+}
+.rating-star li i {
+	font-size: 15px;
+}
+.rating-star li.llena i {
+	color: #e0a100;
+}
+.rating-star li.vacia i {
+	color: #c9c9d6;
+}
+
+/* Mensajes de "no hay datos" en un tono amable en vez de titulares gigantes. */
+.vacio {
+	color: #5a5a78;
+	font-style: italic;
+	text-align: center;
+	margin: 12px 0 20px;
+}
+td.vacio {
+	padding: 28px 12px;
+}
+
+/* Carrito: fila de total destacada y basurero con area tactil de 44px. */
+.fila-total th,
+.fila-total td {
+	border-top: 3px solid #0a0252;
+	font-size: 18px;
+	font-weight: 700;
+	color: #0a0252;
+}
+a.elim {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 44px;
+	min-height: 44px;
+	border-radius: 8px;
+}
+a.elim:hover,
+a.elim:focus-visible {
+	background: #fdecea;
+}
+.volver,
+.limpiar,
+.button_carrito {
+	transition: background-color 0.2s cubic-bezier(0.23, 1, 0.32, 1), color 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+	border: 1px solid transparent;
+}
+
+/* Comentarios: tarjetas con aire y el texto largo no rompe el ancho. */
+#comentarios .card {
+	border: 0;
+	border-radius: 10px;
+	background: #f3f3f8;
+	overflow-wrap: anywhere;
+}
+
+/* Panel de administracion: formulario de ancho legible y tablas que se desplazan en celular. */
+.formulario-admin {
+	max-width: 720px;
+	margin: 0 auto;
+	padding: 8px 0 32px;
+}
+.formulario-admin .form-group label {
+	font-weight: 600;
+	color: #0a0252;
+}
+.formulario-admin .form-check {
+	min-height: 32px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.formulario-admin .form-check-input {
+	position: static;
+	margin: 0;
+	width: 18px;
+	height: 18px;
+}
+.formulario-admin .form-control-file {
+	padding: 10px;
+	border: 2px dashed #c9c9d6;
+	border-radius: 8px;
+	background: #fafafe;
+	width: 100%;
+}
+.table-responsive {
+	-webkit-overflow-scrolling: touch;
+}
+.table td,
+.table th {
+	vertical-align: middle;
+}
+
+/* Foco visible en todos los controles (navegacion con teclado). */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible {
+	outline: 3px solid #ffbe0f;
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		transition-duration: 0.01ms !important;
+	}
+}
+
+/* =====================================================================================================
+   PALETA AZUL Y VERDE (nov-2026). Azul = color principal (titulos, botones, pestanas, bordes);
+   verde = acento (pestana activa, hover, precios, total); rojo solo para acciones de eliminar.
+   Contraste verificado (WCAG AA): azul/blanco 11.1:1, pestanas/blanco 9.1:1, verde/blanco 5.0:1,
+   texto/blanco 8.6:1, precio/tarjeta 5.6:1.
+   ===================================================================================================== */
+:root {
+	--azul: #0b3d6b;
+	--azul-pestanas: #0e4a80;
+	--azul-texto: #1d4f7a;
+	--azul-claro: #e8f1fa;
+	--verde: #15803d;
+	--verde-precio: #11703a;
+	--verde-claro: #e7f6ec;
+}
+
+body {
+	color: var(--azul-texto);
+}
+
+/* Barra de sesion */
+#barra-sesion.bg-light,
+#app > nav.bg-light {
+	background-color: var(--azul-claro) !important;
+}
+
+/* Pestanas de cartas */
+nav > .nav.nav-tabs,
+nav > div a.nav-item.nav-link {
+	background: var(--azul-pestanas);
+}
+nav > div a.nav-item.nav-link.active,
+nav > div a.nav-item.nav-link:hover,
+nav > div a.nav-item.nav-link:focus {
+	background: var(--verde);
+}
+nav > div a.nav-item.nav-link.active:after {
+	border-top-color: var(--verde);
+}
+.tab-content {
+	border-top-color: var(--azul);
+	border-bottom-color: var(--azul);
+}
+hr {
+	border-color: var(--azul);
+}
+
+/* Titulos y precios */
+.section-intro .intro-title,
+h4.intro-title {
+	color: var(--azul);
+}
+.price-tag,
+.food-card .price-tag,
+.food-card-title .price-tag {
+	color: var(--verde-precio);
+}
+
+/* Botones de la carta: azul en reposo, verde al pasar el mouse (antes rojo). */
+.button,
+.button_carrito,
+.volver {
+	background-color: var(--azul);
+	color: #fff;
+}
+.button:hover,
+.button:focus-visible {
+	background-color: var(--verde);
+	color: #fff;
+}
+.volver:hover,
+.button_carrito:hover {
+	background-color: #fff;
+	color: var(--verde);
+	border-color: var(--verde);
+}
+
+/* Carrito: total en verde sobre linea azul */
+.fila-total th,
+.fila-total td {
+	border-top-color: var(--azul);
+	color: var(--azul);
+}
+.fila-total td.price-tag {
+	color: var(--verde-precio);
+}
+
+/* Panel de administracion */
+.formulario-admin .form-group label {
+	color: var(--azul);
+}
+#app .card {
+	border-color: #cfe0f1;
+}
+#app .card-body h3,
+#app .card-body .h3 {
+	color: var(--azul);
+}
+.formulario-admin .form-control:focus,
+#barra-sesion .form-control:focus {
+	border-color: var(--azul-pestanas);
+	box-shadow: 0 0 0 3px rgba(14, 74, 128, 0.2);
+}
+.formulario-admin .form-control-file {
+	border-color: #b9d3ea;
+	background: var(--azul-claro);
+}
+
+/* Comentarios */
+#comentarios .card {
+	background: var(--azul-claro);
+}
+.alert-success {
+	background-color: var(--verde-claro);
+	border-color: #bfe5cc;
+	color: #0f5a2c;
+}
+
+/* Celular: el "@" va pegado al campo de usuario (el input-group no debe partirse en dos filas). */
+#barra-sesion .barra-login .input-group {
+	flex-wrap: nowrap;
+}
+#barra-sesion .barra-login .input-group .form-control {
+	flex: 1 1 auto;
+	width: 1%;
+}
+
+/* Flechas del carrusel de destacados con la paleta (antes salmon). */
+.featured-carousel .owl-nav .left-arrow,
+.featured-carousel .owl-nav .right-arrow,
+.featured-carousel .owl-nav i {
+	color: var(--azul);
+}
+.featured-carousel .owl-nav button:hover i,
+.featured-carousel .owl-nav button:focus-visible i {
+	color: var(--verde);
+}

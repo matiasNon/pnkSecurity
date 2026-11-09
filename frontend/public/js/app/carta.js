@@ -13,12 +13,12 @@
       const aviso = el('span', { class: 'text-danger ml-3', role: 'alert', hidden: true });
       const usuario = el('input', { type: 'email', class: 'form-control', name: 'email', placeholder: 'Usuario', maxlength: 255, autocomplete: 'username', required: true });
       const clave = el('input', { type: 'password', class: 'form-control', name: 'password', placeholder: 'Contraseña', maxlength: 128, autocomplete: 'current-password', required: true });
-      const form = el('form', { class: 'form-inline', role: 'search' },
-        el('div', { class: 'form-group' },
-          el('div', { class: 'input-group-prepend' }, el('span', { class: 'input-group-text', text: '@' })),
+      const form = el('form', { class: 'form-inline barra-login', 'aria-label': 'Iniciar sesión' },
+        el('div', { class: 'input-group' },
+          el('div', { class: 'input-group-prepend' }, el('span', { class: 'input-group-text', 'aria-hidden': 'true', text: '@' })),
           usuario),
-        el('div', { class: 'form-group' }, clave),
-        el('button', { type: 'submit', class: 'btn btn-outline-primary my-2 my-sm-0', text: 'Ingresar' }));
+        clave,
+        el('button', { type: 'submit', class: 'btn btn-outline-primary', text: 'Ingresar' }));
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const r = await pedir('POST', '/api/login', { email: usuario.value, password: clave.value });
@@ -42,7 +42,7 @@
       location.reload();
     });
     return agregar(nav, [
-      el('span', { text: `Bienvenido: ${estado.usuario.nombre}` }),
+      el('span', { class: 'barra-saludo', text: `Bienvenido: ${estado.usuario.nombre}` }),
       estado.usuario.rol === 'admin' ? el('a', { class: 'btn btn-success my-2 my-sm-0', href: '/admin', text: 'Administrar carta (CRUD)' }) : null,
       salir,
     ]);
@@ -68,9 +68,10 @@
           el('h5', {}, contacto))))));
   }
 
+  // Siempre 5 estrellas: las de la puntuacion en dorado y el resto apagadas (antes solo se dibujaban las llenas).
   function estrellas(n) {
-    const ul = el('ul', { class: 'rating-star' });
-    for (let i = 1; i <= n; i++) ul.appendChild(el('li', {}, el('i', { class: 'ti-star' })));
+    const ul = el('ul', { class: 'rating-star', role: 'img', 'aria-label': `Puntuación ${n} de 5` });
+    for (let i = 1; i <= 5; i++) ul.appendChild(el('li', { class: i <= n ? 'llena' : 'vacia', 'aria-hidden': 'true' }, el('i', { class: 'ti-star' })));
     return ul;
   }
 
@@ -122,9 +123,9 @@
   function cartas(lista) {
     const paneles = lista.length > 0 ? lista : [{ id: 0, nombre: '', categorias: [] }];
     const pestanas = el('div', { class: 'nav nav-tabs nav-fill', id: 'nav-tab', role: 'tablist' },
-      lista.map((c) => el('a', {
-        class: 'nav-item nav-link', id: `nav-carta-${c.id}-tab`, 'data-toggle': 'tab', href: `#carta-${c.id}`,
-        role: 'tab', 'aria-controls': `carta-${c.id}`, 'aria-selected': 'false', text: c.nombre,
+      lista.map((c, i) => el('a', {
+        class: `nav-item nav-link${i === 0 ? ' active' : ''}`, id: `nav-carta-${c.id}-tab`, 'data-toggle': 'tab', href: `#carta-${c.id}`,
+        role: 'tab', 'aria-controls': `carta-${c.id}`, 'aria-selected': i === 0 ? 'true' : 'false', text: c.nombre,
       })));
     const contenido = el('div', { class: 'tab-content py-3 px-3 px-sm-0', id: 'nav-tabContent' },
       paneles.map((p, i) => el('div', {
@@ -135,7 +136,7 @@
           el('div', { class: 'section-intro mb-20px' }, el('h4', { class: 'intro-title', text: cat.nombre })),
           el('div', { class: 'row' }, cat.items.length > 0
             ? cat.items.map((it) => producto(it, cat.items.length > 1))
-            : el('div', { class: 'col-lg-12' }, el('div', { class: 'text-center' }, el('h4', { text: 'No Información para Mostrar' })))),
+            : el('div', { class: 'col-lg-12' }, el('p', { class: 'vacio', text: 'Aún no hay productos en esta categoría.' }))),
         ]))));
     return el('section', {}, el('div', { class: 'container contendor' }, el('div', { class: 'container' },
       el('div', { class: 'row' }, el('div', { class: 'col-lg-12' }, el('nav', {}, pestanas), contenido)))));
@@ -149,8 +150,9 @@
 
   function comentarios(lista) {
     const aviso = el('div', { role: 'alert', hidden: true });
+    const vacio = el('p', { class: 'vacio', text: 'Todavía no hay comentarios. ¡Sé el primero en opinar!', hidden: lista.length > 0 });
     const listado = el('div', { id: 'comentarios' }, lista.map(tarjetaComentario));
-    let form = null;
+    let form = el('p', { class: 'vacio', text: 'Inicia sesión arriba para dejar tu comentario.' });
     if (estado.usuario) {
       const texto = el('textarea', { class: 'form-control', rows: 5, id: 'comentario', name: 'comentario', maxlength: 1000, required: true });
       form = el('form', {},
@@ -167,6 +169,7 @@
           aviso.className = 'alert alert-success';
           aviso.textContent = 'Comentario publicado.';
           texto.value = '';
+          vacio.hidden = true;
           agregar(listado, tarjetaComentario(r.datos.comentario));
         } else {
           aviso.className = `alert alert-${r.status === 429 || r.status === 401 ? 'warning' : 'danger'}`;
@@ -178,7 +181,7 @@
     return el('section', {}, el('div', { class: 'container contendor' }, el('div', { class: 'container' },
       el('div', { class: 'row' }, el('div', { class: 'col-lg-12' },
         el('div', { class: 'section-intro' }, el('h4', { class: 'intro-title', text: 'Comentarios' }), aviso, form),
-        el('br'), listado, el('hr'))))));
+        el('br'), vacio, listado, el('hr'))))));
   }
 
   // ---------- Carrito ----------

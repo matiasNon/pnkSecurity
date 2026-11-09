@@ -50,7 +50,8 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
     await page.getByRole('link', { name: /Productos Seleccionados/ }).click();
     await expect(page).toHaveURL(/\/restaurantes\/1\/carrito$/);
     await expect(page.getByRole('cell', { name: 'Lomo a lo Pobre', exact: true })).toBeVisible();
-    await expect(page.getByRole('cell', { name: '$ 12.500', exact: true })).toBeVisible();
+    await expect(page.locator('tbody').getByRole('cell', { name: '$ 12.500', exact: true })).toBeVisible();
+    await expect(page.locator('tfoot .fila-total')).toContainText('Total');
     await captura(page, '04-carrito');
   });
 
@@ -61,12 +62,15 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
     await page.locator('#myModal .close').click();
     await expect(page.locator('#myModal')).toBeHidden();
     await page.goto('/restaurantes/1/carrito');
-    const filas = page.locator('tbody tr');
+    // Solo filas de productos (con boton eliminar); el carrito vacio muestra una fila de aviso.
+    const filas = page.locator('tbody tr:has(a.elim)');
     const antes = await filas.count();
     await page.locator('a.elim').first().click();
     await expect(filas).toHaveCount(antes - 1);
     await page.getByRole('link', { name: 'Eliminar Todo' }).click();
     await expect(filas).toHaveCount(0);
+    await expect(page.getByText('Tu carrito está vacío')).toBeVisible();
+    await expect(page.locator('tfoot .fila-total')).toContainText('$ 0');
   });
 
   test('RF-04 / RF-05 iniciar sesion y comentar (el HTML se muestra como texto)', async ({ page }) => {

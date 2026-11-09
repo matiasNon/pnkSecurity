@@ -13,8 +13,12 @@
           el('b', { text: 'Área Tecnologías de Información y Ciberseguridad - Inacap Sede La Serena' }), el('br'), el('br')))));
   }
 
-  function filas(items, cuerpo) {
+  function filas(items, cuerpo, total) {
     vaciar(cuerpo);
+    total.textContent = moneda(items.reduce((s, p) => s + p.precio, 0));
+    if (items.length === 0) {
+      cuerpo.appendChild(el('tr', {}, el('td', { colspan: 4, class: 'vacio', text: 'Tu carrito está vacío. Vuelve a la carta y elige tus productos.' })));
+    }
     for (const p of items) {
       cuerpo.appendChild(el('tr', {},
         el('th', { scope: 'row', text: p.id }),
@@ -22,14 +26,14 @@
         el('td', { text: moneda(p.precio) }),
         el('td', {}, el('a', {
           class: 'elim', id: String(p.posicion), href: '#', 'aria-label': `Eliminar ${p.nombre}`,
-          onclick: async (e) => { e.preventDefault(); await pedir('DELETE', `/api/restaurantes/${rid}/carrito/items/${p.posicion}`); recargar(cuerpo); },
+          onclick: async (e) => { e.preventDefault(); await pedir('DELETE', `/api/restaurantes/${rid}/carrito/items/${p.posicion}`); recargar(cuerpo, total); },
         }, icono('basura')))));
     }
   }
 
-  async function recargar(cuerpo) {
+  async function recargar(cuerpo, total) {
     const r = await pedir('GET', `/api/restaurantes/${rid}/carrito`);
-    if (r.ok) filas(r.datos.items, cuerpo);
+    if (r.ok) filas(r.datos.items, cuerpo, total);
   }
 
   async function iniciar() {
@@ -42,9 +46,10 @@
     document.title = rest.nombre;
 
     const cuerpo = el('tbody');
+    const total = el('td', { class: 'price-tag', text: moneda(0) });
     const limpiar = el('a', {
       class: 'limpiar', href: '#', text: 'Eliminar Todo',
-      onclick: async (e) => { e.preventDefault(); await pedir('DELETE', `/api/restaurantes/${rid}/carrito`); recargar(cuerpo); },
+      onclick: async (e) => { e.preventDefault(); await pedir('DELETE', `/api/restaurantes/${rid}/carrito`); recargar(cuerpo, total); },
     });
 
     agregar(vaciar(document.getElementById('app')), [
@@ -58,16 +63,17 @@
       el('section', {}, el('div', { class: 'container contendor' }, el('div', { class: 'row' }, el('div', { class: 'col-lg-12' },
         el('h4', { class: 'intro-title centrado', text: 'Productos Agregados para Solicitar' }))))),
       el('section', {}, el('div', { class: 'container contendor' }, el('div', { class: 'row' }, el('div', { class: 'col-lg-12' },
-        el('table', { class: 'table table-hover table-lg' },
+        el('div', { class: 'table-responsive' }, el('table', { class: 'table table-hover table-lg' },
           el('thead', {}, el('tr', {},
             el('th', { scope: 'col', text: 'Código' }), el('th', { scope: 'col', text: 'Producto' }),
-            el('th', { scope: 'col', text: 'Precios' }), el('th', { scope: 'col', text: 'Acción' }))),
-          cuerpo),
+            el('th', { scope: 'col', text: 'Precio' }), el('th', { scope: 'col', text: 'Acción' }))),
+          cuerpo,
+          el('tfoot', {}, el('tr', { class: 'fila-total' }, el('td', {}), el('th', { scope: 'row', text: 'Total' }), total, el('td', {}))))),
         el('div', {}, el('hr'), el('br'),
           el('h3', { class: 'price-tag text-center', text: '¡¡¡Si estas listo con tu pedido, llama al garzón para solicitarlo!!!' })))))),
       pieCarrito(),
     ]);
-    filas(r.datos.items, cuerpo);
+    filas(r.datos.items, cuerpo, total);
     return null;
   }
 

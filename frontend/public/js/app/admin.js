@@ -93,9 +93,9 @@
       el('section', {}, el('div', { class: 'container contendor' },
         el('h4', { class: 'intro-title text-center', text: d.plural }),
         aviso,
-        el('table', { class: 'table table-hover' },
+        el('div', { class: 'table-responsive' }, el('table', { class: 'table table-hover' },
           el('thead', {}, el('tr', {}, d.columnas.map((c) => el('th', { scope: 'col', text: c.titulo })), el('th', { scope: 'col', text: 'Acciones' }))),
-          cuerpo))),
+          cuerpo)))),
       pie(),
     ]);
   }
@@ -166,8 +166,8 @@
     agregar(app(), [
       el('nav', { class: 'navbar navbar-light bg-light' },
         el('a', { class: 'btn btn-link', href: `/admin/${recurso}`, text: `← ${d.plural}` })),
-      el('section', {}, el('div', { class: 'container contendor' },
-        el('h4', { class: 'intro-title text-center', text: titulo }), general, form)),
+      el('section', {}, el('div', { class: 'container contendor' }, el('div', { class: 'formulario-admin' },
+        el('h4', { class: 'intro-title text-center', text: titulo }), general, form))),
       pie(),
     ]);
   }
