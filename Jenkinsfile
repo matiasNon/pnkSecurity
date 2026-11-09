@@ -33,7 +33,7 @@ pipeline {
     stage('Desarrollo: lint + SAST') {
       steps {
         // eslint con eslint-plugin-security (CWE de inyeccion, regex inseguras, eval...). Los errores bloquean la pipeline.
-        sh 'npx eslint src scripts tests -f json -o reports/seguridad/eslint-sast.json || true'
+        sh 'npx eslint src scripts tests frontend/public/js/app -f json -o reports/seguridad/eslint-sast.json || true'
         sh 'npm run lint'
       }
     }
@@ -42,14 +42,15 @@ pipeline {
     stage('QA: ambiente efimero') {
       steps {
         sh '$CI down -v --remove-orphans || true'
-        sh '$CI build app tests e2e'
-        sh '$CI up -d db app'
+        sh '$CI build backend frontend tests e2e'
+        sh '$CI up -d db backend frontend'
         sh '''
           for i in $(seq 1 40); do
-            [ "$(docker inspect -f '{{.State.Health.Status}}' ${CI_PROJECT}-app-1 2>/dev/null)" = "healthy" ] && exit 0
+            [ "$(docker inspect -f '{{.State.Health.Status}}' ${CI_PROJECT}-backend-1 2>/dev/null)" = "healthy" ] \
+              && [ "$(docker inspect -f '{{.State.Health.Status}}' ${CI_PROJECT}-frontend-1 2>/dev/null)" = "healthy" ] && exit 0
             sleep 3
           done
-          echo "La aplicacion QA no llego a estado healthy"; $CI logs app | tail -30; exit 1
+          echo "La aplicacion QA no llego a estado healthy"; $CI logs backend frontend | tail -40; exit 1
         '''
       }
     }
@@ -151,11 +152,17 @@ pipeline {
               // CVE y CWE son catalogos de MITRE: Trivy reporta cada hallazgo con su identificador.
               sh '''
                 set +e
-                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy_cache:/root/.cache/ \
-                  docker.io/aquasec/trivy:latest image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 \
-                  --format json pnk-ci-app > reports/seguridad/trivy.json
-                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy_cache:/root/.cache/ \
-                  docker.io/aquasec/trivy:latest image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 pnk-ci-app
+                # Se escanean las DOS imagenes: backend (Node) y frontend (nginx).
+                rc=0
+                for img in carta-backend:latest carta-frontend:local; do
+                  nombre=$(echo "$img" | cut -d: -f1)
+                  docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy_cache:/root/.cache/ \
+                    docker.io/aquasec/trivy:latest image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 \
+                    --format json "$img" > reports/seguridad/trivy-$nombre.json
+                  docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy_cache:/root/.cache/ \
+                    docker.io/aquasec/trivy:latest image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "$img" || rc=1
+                done
+                exit $rc
               '''
             }
           }
@@ -168,7 +175,7 @@ pipeline {
                 docker rm -f ci-zap >/dev/null 2>&1 || true
                 docker volume rm -f zap_wrk >/dev/null 2>&1 || true
                 set +e
-                docker create --name ci-zap --network ${CI_PROJECT}_interna -u root -v zap_wrk:/zap/wrk ghcr.io/zaproxy/zaproxy:stable                   zap-baseline.py -t http://carta:3000/restaurantes/1 -c zap-rules.conf -r zap.html -J zap.json -j >/dev/null
+                docker create --name ci-zap --network ${CI_PROJECT}_interna -u root -v zap_wrk:/zap/wrk ghcr.io/zaproxy/zaproxy:stable                   zap-baseline.py -t http://carta:8080/restaurantes/1 -c zap-rules.conf -r zap.html -J zap.json -j >/dev/null
                 docker cp security/zap-rules.conf ci-zap:/zap/wrk/zap-rules.conf
                 docker start -a ci-zap
                 rc=$?
@@ -195,6 +202,34 @@ pipeline {
         // Con $SECRETOS/ec2_host (IP o nombre de la EC2) se despliega en AWS por SSH con una llave exclusiva de Jenkins
         // (id_deploy, fuera del repositorio); sin ese archivo se despliega en el Docker local (laboratorio).
         sh '''
+          # Alta disponibilidad (infra/aws): con $SECRETOS/aws_stack (nombre del stack) y $SECRETOS/aws_credentials
+          # (credenciales del Learner Lab; caducan con la sesion y se pegan de nuevo en cada sesion) se reemplazan las
+          # instancias de los dos ASG de forma escalonada (instance refresh): cada instancia nueva clona la rama produccion.
+          # Sin SSH: los Security Groups solo aceptan trafico del balanceador.
+          if [ -f $SECRETOS/aws_stack ] && [ -f $SECRETOS/aws_credentials ]; then
+            STACK=$(tr -d '[:space:]' < $SECRETOS/aws_stack)
+            AWS="docker run --rm -v $SECRETOS/aws_credentials:/root/.aws/credentials:ro -e AWS_DEFAULT_REGION=us-east-1 -e AWS_PAGER= amazon/aws-cli:2.31.0"
+            salida() { $AWS cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+            DNS=$(salida DnsBalanceador)
+            for ASG in $(salida AsgFrontendNombre) $(salida AsgBackendNombre); do
+              echo "Instance refresh de $ASG"
+              $AWS autoscaling start-instance-refresh --auto-scaling-group-name "$ASG" \
+                --preferences '{"MinHealthyPercentage":50,"InstanceWarmup":300}' --query InstanceRefreshId --output text
+            done
+            for i in $(seq 1 90); do
+              PEND=0
+              for ASG in $(salida AsgFrontendNombre) $(salida AsgBackendNombre); do
+                E=$($AWS autoscaling describe-instance-refreshes --auto-scaling-group-name "$ASG" --max-records 1 --query 'InstanceRefreshes[0].Status' --output text)
+                echo "  $ASG: $E"
+                case "$E" in Successful) ;; Pending|InProgress) PEND=1 ;; *) echo "Instance refresh fallo ($E)"; exit 1 ;; esac
+              done
+              [ $PEND -eq 0 ] && break
+              sleep 20
+            done
+            curl -sk -m 10 https://$DNS/api/health | grep -q '"ok"' && curl -sk -m 10 -o /dev/null -w '%{http_code}' https://$DNS/restaurantes/1 | grep -q 200 \
+              && { echo "Produccion (AWS alta disponibilidad) OK: https://$DNS"; exit 0; }
+            echo "El ALB no respondio /api/health o /restaurantes/1"; exit 1
+          fi
           if [ -f $SECRETOS/ec2_host ]; then
             HOST=$(tr -d '[:space:]' < $SECRETOS/ec2_host)
             SSH="ssh -i $SECRETOS/id_deploy -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$SECRETOS/known_hosts -o ConnectTimeout=15 ubuntu@$HOST"

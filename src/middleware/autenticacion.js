@@ -12,7 +12,6 @@ function usuarioAutenticado(req) {
 function cargarUsuario(modeloUsuario) {
   return async (req, res, next) => {
     try {
-      res.locals.sesion = null;
       if (!usuarioAutenticado(req)) return next();
       const u = await modeloUsuario.porId(req.session.uid);
       if (!u || !u.habilitado) {
@@ -22,7 +21,6 @@ function cargarUsuario(modeloUsuario) {
         return next();
       }
       req.usuario = u;
-      res.locals.sesion = { nombre: u.nombre, rol: u.rol };
       return next();
     } catch (e) {
       return next(e);
@@ -33,7 +31,7 @@ function cargarUsuario(modeloUsuario) {
 function requiereSesion(req, res, next) {
   if (req.usuario) return next();
   logSeguridad('SEC', 'acceso_sin_sesion', { ruta: req.originalUrl.slice(0, 80) }, req);
-  return res.status(403).render('error', { titulo: 'Debe iniciar sesión', codigo: 403 });
+  return res.status(401).json({ error: 'Debe iniciar sesión', codigo: 'sin_sesion' });
 }
 
 // Solo rol admin y con restaurante asignado. Siempre se opera sobre req.usuario.restaurante_id:
@@ -41,7 +39,7 @@ function requiereSesion(req, res, next) {
 function requiereAdmin(req, res, next) {
   if (req.usuario && req.usuario.rol === 'admin' && req.usuario.restaurante_id) return next();
   logSeguridad('SEC', 'acceso_admin_denegado', { uid: req.usuario ? req.usuario.id : '-' }, req);
-  return res.status(403).render('error', { titulo: 'Acceso restringido', codigo: 403 });
+  return res.status(403).json({ error: 'Acceso restringido', codigo: 'prohibido' });
 }
 
 module.exports = { usuarioAutenticado, cargarUsuario, requiereSesion, requiereAdmin };

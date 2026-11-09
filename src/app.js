@@ -1,11 +1,12 @@
 'use strict';
-// Fabrica de la aplicacion Express (MVC). Separada de server.js para poder probarla con Supertest.
+// Fabrica del BACKEND (API REST JSON). Separada de server.js para poder probarla con Supertest.
+// El frontend (paginas HTML/CSS/JS) es otro servicio: frontend/ (nginx). El balanceador envia /api/* y /uploads/*
+// a este backend y todo lo demas al frontend, asi ambos comparten origen (cookie SameSite=Strict, sin CORS).
 
 const path = require('node:path');
 const express = require('express');
 
 const { crearModelos } = require('./models');
-const { monedaChilena } = require('./utils/validar');
 const { cabecerasSeguridad, sinCache, forzarHttps } = require('./middleware/seguridad');
 const { middlewareSesion } = require('./middleware/sesion');
 const { asegurarToken } = require('./middleware/csrf');
@@ -16,8 +17,7 @@ const crearControladorCarta = require('./controllers/carta');
 const crearControladorAuth = require('./controllers/auth');
 const crearControladorComentario = require('./controllers/comentario');
 const crearControladorAdmin = require('./controllers/admin');
-const crearRutasPublicas = require('./routes/publicas');
-const crearRutasAdmin = require('./routes/admin');
+const { rutasPublicas, rutasAdmin } = require('./routes/api');
 
 function crearApp({ cfg, pool }) {
   const app = express();
@@ -26,48 +26,44 @@ function crearApp({ cfg, pool }) {
 
   app.disable('x-powered-by');
   app.disable('etag');
-  // Solo se confia en X-Forwarded-* cuando el despliegue lo declara (un salto: nginx).
+  // Solo se confia en X-Forwarded-* cuando el despliegue lo declara (un salto: nginx o el ALB).
   app.set('trust proxy', cfg.confiarProxy ? 1 : false);
-  app.set('view engine', 'ejs');
-  app.set('views', path.join(__dirname, 'views'));
-  app.locals.moneda = monedaChilena;
 
   app.use(cabecerasSeguridad());
 
-  // Salud para Docker y la pipeline: sin sesion y sin redireccion a HTTPS.
-  app.get('/health', async (req, res) => {
+  // Salud para Docker, el health check del balanceador y la pipeline: sin sesion y sin redireccion a HTTPS.
+  const salud = async (req, res) => {
     try {
       await pool.query('SELECT 1');
-      res.set('Cache-Control', 'no-store').json({ estado: 'ok' });
+      res.set('Cache-Control', 'no-store').json({ estado: 'ok', servicio: 'backend' });
     } catch {
-      res.status(503).set('Cache-Control', 'no-store').json({ estado: 'error' });
+      res.status(503).set('Cache-Control', 'no-store').json({ estado: 'error', servicio: 'backend' });
     }
-  });
+  };
+  app.get('/health', salud);
+  app.get('/api/health', salud);
 
   app.use(forzarHttps(cfg));
 
-  // Archivos estaticos: primero lo subido por el panel (volumen aparte), luego public/.
-  const opcionesEstaticas = { index: false, dotfiles: 'ignore', maxAge: '1h' };
-  app.use('/imagenes', express.static(path.resolve(cfg.UPLOAD_DIR), opcionesEstaticas));
-  app.use(express.static(path.join(__dirname, '..', 'public'), opcionesEstaticas));
+  // Fotos subidas por el panel (volumen aparte: EFS en AWS). Solo imagenes con nombre aleatorio.
+  app.use('/uploads', express.static(path.resolve(cfg.UPLOAD_DIR), { index: false, dotfiles: 'ignore', maxAge: '1h' }));
 
-  // Cuerpos pequenos: la carta solo recibe formularios cortos (los archivos los procesa multer en el panel).
-  app.use(express.urlencoded({ extended: false, limit: '20kb', parameterLimit: 50 }));
-
-  app.use(sinCache);
-  app.use(...middlewareSesion(cfg, pool));
-  app.use(asegurarToken);
-  app.use(cargarUsuario(modelos.usuario));
-
-  const auth = crearControladorAuth(modelos, pool, cfg);
-  app.use(
-    crearRutasPublicas({
+  const api = express.Router();
+  // Cuerpos pequenos: la API solo recibe JSON corto (los archivos los procesa multer en el panel).
+  api.use(express.json({ limit: '20kb', strict: true }));
+  api.use(sinCache);
+  api.use(...middlewareSesion(cfg, pool));
+  api.use(asegurarToken);
+  api.use(cargarUsuario(modelos.usuario));
+  api.use(
+    rutasPublicas({
       carta: crearControladorCarta(modelos),
       comentario: crearControladorComentario(modelos, pool),
-      auth,
+      auth: crearControladorAuth(modelos, pool, cfg),
     })
   );
-  app.use('/admin', crearRutasAdmin(crearControladorAdmin(modelos, subidas), subidas));
+  api.use('/admin', rutasAdmin(crearControladorAdmin(modelos, subidas), subidas));
+  app.use('/api', api);
 
   app.use(noEncontrado);
   app.use(manejadorErrores);

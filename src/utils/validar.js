@@ -12,11 +12,16 @@ function entero(valor) {
   return n >= 1 && n <= MAX_INT ? n : null;
 }
 
-// Ruta relativa de una imagen solo si el nombre es seguro; si no, null (equivale a ruta_foto() de PHP).
+// Fotos subidas por el panel: 32 hex + extension (las genera middleware/subidas.js). Las sirve el BACKEND (EFS).
+const FOTO_SUBIDA = /^[a-f0-9]{32}\.(jpg|png|gif|webp)$/;
+
+// URL de una imagen solo si el nombre es seguro; si no, null (equivale a ruta_foto() de PHP).
+// Las fotos del volcado original viven en el FRONTEND (/imagenes/...); las subidas por el panel, en el backend (/uploads/...).
 function rutaFoto(restauranteId, foto) {
   if (typeof foto !== 'string') return null;
   if (!/^[A-Za-z0-9._-]{1,100}\.(jpe?g|png|gif|webp)$/i.test(foto) || foto.includes('..')) return null;
-  return `/imagenes/cod${Number(restauranteId)}/${foto}`;
+  const base = FOTO_SUBIDA.test(foto) ? '/uploads' : '/imagenes';
+  return `${base}/cod${Number(restauranteId)}/${foto}`;
 }
 
 // Formato de moneda chilena: 12500 -> "$ 12.500".
@@ -25,4 +30,4 @@ function monedaChilena(numero) {
   return '$ ' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-module.exports = { entero, rutaFoto, monedaChilena, MAX_INT };
+module.exports = { entero, rutaFoto, monedaChilena, MAX_INT, FOTO_SUBIDA };

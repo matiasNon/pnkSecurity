@@ -2,7 +2,8 @@
 // Pruebas unitarias de los componentes de seguridad (sin servidor HTTP).
 
 const { entero, rutaFoto, monedaChilena } = require('../../src/utils/validar');
-const { esc, nl2br } = require('../../src/utils/html');
+const fs = require('node:fs');
+const path = require('node:path');
 const { hashPassword, verificarPassword } = require('../../src/services/password');
 const { cargarConfig } = require('../../src/config/env');
 const { detectarTipo } = require('../../src/middleware/subidas');
@@ -34,12 +35,12 @@ describe('monedaChilena()', () => {
   );
 });
 
-describe('escape de salida', () => {
-  test('esc() neutraliza los caracteres de HTML', () => {
-    expect(esc(`<a href="x" onclick='y'>&</a>`)).toBe('&lt;a href=&quot;x&quot; onclick=&#39;y&#39;&gt;&amp;&lt;/a&gt;');
-  });
-  test('nl2br() escapa primero y luego convierte los saltos de linea', () => {
-    expect(nl2br('<b>\r\nx\ny')).toBe('&lt;b&gt;<br>x<br>y');
+describe('escape de salida en el frontend (ASVS V1.2)', () => {
+  // El backend entrega JSON y el frontend arma el DOM con textContent/createElement: ningun sumidero de HTML.
+  const dir = path.join(__dirname, '..', '..', 'frontend', 'public', 'js', 'app');
+  test.each(fs.readdirSync(dir).filter((f) => f.endsWith('.js')))('%s no usa innerHTML, outerHTML, insertAdjacentHTML, document.write ni eval', (f) => {
+    const codigo = fs.readFileSync(path.join(dir, f), 'utf8').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(codigo).not.toMatch(/\.(innerHTML|outerHTML)\s*=|insertAdjacentHTML|document\.write|\beval\(|new Function\(/);
   });
 });
 
@@ -98,12 +99,23 @@ describe('configuracion por ambiente (ASVS V13)', () => {
     ['DB_PASSWORD ausente', { DB_PASSWORD: '' }],
     ['DB_PASSWORD por defecto', { DB_PASSWORD: 'changeme' }],
     ['FORCE_HTTPS sin PUBLIC_HOST valido', { FORCE_HTTPS: '1', PUBLIC_HOST: 'host malo/../' }],
+    ['DB_SSL=1 sin certificado de la CA', { DB_SSL: '1', DB_SSL_CA: '' }],
+    ['DB_SSL con valor invalido', { DB_SSL: 'si' }],
   ])('produccion se niega a arrancar con %s', (_n, cambio) => {
     expect(() => cargarConfig({ ...base, ...cambio })).toThrow(/Configuracion invalida/);
   });
   test('dev y qa no exigen secretos y no usan cookie Secure', () => {
     expect(cargarConfig({ APP_ENV: 'dev' }).cookieSegura).toBe(false);
     expect(cargarConfig({ APP_ENV: 'qa' }).esQa).toBe(true);
+  });
+  test('conexion a la BD con TLS: verifica siempre el certificado y usa la CA indicada (RDS)', () => {
+    const { opcionesSsl } = require('../../src/config/db');
+    expect(opcionesSsl(cargarConfig(base))).toBe(false);
+    const cfg = cargarConfig({ ...base, DB_SSL: '1', DB_SSL_CA: '/certs/rds-ca.pem' });
+    const leidas = [];
+    const ssl = opcionesSsl(cfg, (ruta) => { leidas.push(ruta); return 'CA-PEM'; });
+    expect(ssl).toEqual({ rejectUnauthorized: true, ca: 'CA-PEM' });
+    expect(leidas).toEqual(['/certs/rds-ca.pem']);
   });
   test('un ambiente desconocido se rechaza', () => {
     expect(() => cargarConfig({ APP_ENV: 'staging' })).toThrow();

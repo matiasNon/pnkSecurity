@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
-# Imagen multi-etapa de la carta digital. La etapa final no incluye npm cache, devDependencies ni herramientas de compilacion.
+# Imagen multi-etapa del BACKEND de la carta digital (API REST). La etapa final no incluye npm cache, devDependencies ni
+# herramientas de compilacion. El frontend tiene su propia imagen: frontend/Dockerfile (nginx).
 
 # --- Etapa 1: dependencias de produccion ---
 FROM node:24-alpine AS deps
@@ -24,7 +25,6 @@ COPY package.json ./
 COPY src ./src
 COPY scripts ./scripts
 COPY db ./db
-COPY public ./public
 # La imagen final no necesita npm, corepack ni yarn (solo ejecuta "node"): se quitan para reducir la superficie de ataque
 # (el escaner de imagenes reportaba CVE en las librerias internas de npm: undici, brace-expansion).
 USER root
@@ -44,5 +44,5 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY playwright.config.js ./
 COPY tests ./tests
-COPY public/imagenes ./public/imagenes
+COPY frontend/public/imagenes ./frontend/public/imagenes
 CMD ["npx", "playwright", "test"]

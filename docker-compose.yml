@@ -1,4 +1,8 @@
-# Base comun a los tres ambientes. Se usa siempre junto a un archivo de ambiente:
+# Base comun a los ambientes locales. Tres servicios separados:
+#   db       PostgreSQL 17 (en AWS se reemplaza por Amazon RDS)
+#   backend  API REST (Node.js + Express), solo en la red interna
+#   frontend paginas estaticas (nginx); reenvia /api y /uploads al backend (en AWS lo hace el ALB)
+# Se usa siempre junto a un archivo de ambiente:
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 #   docker compose -f docker-compose.yml -f docker-compose.qa.yml up --build --abort-on-container-exit
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
@@ -13,10 +17,11 @@ services:
       retries: 12
     networks: [interna]
 
-  app:
+  backend:
     build:
       context: .
       target: runtime
+    image: carta-backend:latest
     restart: unless-stopped
     depends_on:
       db:
@@ -27,6 +32,22 @@ services:
       UPLOAD_DIR: /data/uploads
     volumes:
       - uploads:/data/uploads
+    networks: [interna]
+
+  frontend:
+    build:
+      context: ./frontend
+      target: local
+    image: carta-frontend:local
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     networks: [interna]
 
 networks:

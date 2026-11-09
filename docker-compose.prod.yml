@@ -1,4 +1,5 @@
-# Ambiente de PRODUCCION: imagen inmutable, sistema de archivos de solo lectura, sin puertos publicados salvo nginx (80/443).
+# Ambiente de PRODUCCION en una sola EC2: imagenes inmutables, sistema de archivos de solo lectura, sin puertos publicados
+# salvo nginx (80/443), que termina TLS y enruta: /api y /uploads -> backend, el resto -> frontend.
 # Requiere .env.prod (copiar de .env.prod.example) y el certificado en el volumen pnk-prod-certs
 # (bash infra/generar-certificado.sh <IP> && bash infra/cargar-certificado.sh).
 services:
@@ -8,7 +9,7 @@ services:
       - pgdata_prod:/var/lib/postgresql/data
     security_opt: ["no-new-privileges:true"]
 
-  app:
+  backend:
     env_file: .env.prod
     environment:
       TRUST_PROXY: "1"
@@ -27,7 +28,9 @@ services:
     build: ./infra/nginx
     restart: unless-stopped
     depends_on:
-      app:
+      backend:
+        condition: service_healthy
+      frontend:
         condition: service_healthy
     ports:
       - "80:80"

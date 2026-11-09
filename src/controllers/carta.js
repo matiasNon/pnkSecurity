@@ -1,25 +1,11 @@
 'use strict';
-// Controlador de la carta publica y el carrito (equivale a index.php, mostrar_carrito.php y carrito.php).
+// API de la carta publica y el carrito (equivale a index.php, mostrar_carrito.php y carrito.php).
+// Solo entrega datos (JSON): el frontend arma la pagina y escapa todo lo que muestra (textContent, nunca innerHTML).
 
-const { rutaFoto, monedaChilena, entero } = require('../utils/validar');
-const { nl2br } = require('../utils/html');
+const { rutaFoto, entero } = require('../utils/validar');
 const { logSeguridad } = require('../services/logSeguridad');
 
 const CARRITO_MAX_ITEMS = 50;
-
-const MENSAJES_LOGIN = {
-  error: 'Usuario o contraseña incorrectos.',
-  bloqueado: 'Demasiados intentos fallidos. Intente nuevamente en unos minutos.',
-  csrf: 'La solicitud expiró. Intente nuevamente.',
-};
-
-const MENSAJES_COMENTARIO = {
-  ok: ['success', 'Comentario publicado.'],
-  csrf: ['warning', 'Su sesión expiró. Inicie sesión e intente comentar nuevamente.'],
-  invalido: ['danger', 'El comentario no puede estar vacío ni superar 1000 caracteres.'],
-  espera: ['warning', 'Espere unos segundos antes de publicar otro comentario.'],
-  error: ['danger', 'No se pudo publicar el comentario. Intente nuevamente.'],
-};
 
 // El carrito vive en la sesion y es POR RESTAURANTE (la version PHP mezclaba restaurantes distintos).
 function leerCarrito(req, rid) {
@@ -38,22 +24,37 @@ module.exports = (modelos) => {
       const rid = entero(req.params.id);
       const restaurante = rid === null ? null : await modelos.restaurante.obtener(rid);
       if (!restaurante) {
-        return res.status(404).render('error', { titulo: 'Restaurante no encontrado', codigo: 404 });
+        return res.status(404).json({ error: 'Restaurante no encontrado', codigo: 'no_encontrado' });
       }
       req.rid = rid;
       req.restaurante = restaurante;
-      res.locals.rid = rid;
-      res.locals.restaurante = restaurante;
       return next();
     } catch (e) {
       return next(e);
     }
   }
 
-  const ayudasVista = (rid) => ({
-    foto: (f) => rutaFoto(rid, f),
-    moneda: monedaChilena,
-    nl2br,
+  // Solo los campos publicos, con la URL de la foto ya validada (o null).
+  const restaurantePublico = (r) => ({
+    id: r.id,
+    nombre: r.nombre,
+    calle: r.calle,
+    numero: r.numero,
+    comuna: r.comuna,
+    fono: r.fono || null,
+    email: r.email || null,
+    foto: rutaFoto(r.id, r.foto),
+  });
+
+  const producto = (rid, p) => ({
+    id: p.id,
+    nombre: p.nombre,
+    descripcion: p.descripcion || '',
+    observaciones: p.observaciones || '',
+    tiempo: p.tiempo || '',
+    puntuacion: Math.max(0, Math.min(5, Number(p.puntuacion) || 0)),
+    precio: Number(p.precio) || 0,
+    foto: rutaFoto(rid, p.foto),
   });
 
   async function mostrarCarta(req, res, next) {
@@ -64,16 +65,19 @@ module.exports = (modelos) => {
         modelos.carta.arbolPublico(rid),
         modelos.comentario.ultimos(rid),
       ]);
-      const login = typeof req.query.login === 'string' ? req.query.login : '';
-      const c = typeof req.query.c === 'string' ? req.query.c : '';
-      res.render('carta', {
-        titulo: req.restaurante.nombre,
-        destacados,
-        cartas,
-        comentarios,
-        mensajeLogin: Object.hasOwn(MENSAJES_LOGIN, login) ? MENSAJES_LOGIN[login] : null,
-        mensajeComentario: Object.hasOwn(MENSAJES_COMENTARIO, c) ? MENSAJES_COMENTARIO[c] : null,
-        ...ayudasVista(rid),
+      res.json({
+        restaurante: restaurantePublico(req.restaurante),
+        destacados: destacados.map((d) => producto(rid, d)),
+        cartas: cartas.map((c) => ({
+          id: c.id,
+          nombre: c.nombre,
+          categorias: c.categorias.map((k) => ({
+            id: k.id,
+            nombre: k.nombre,
+            items: k.items.map((i) => producto(rid, i)),
+          })),
+        })),
+        comentarios: comentarios.map((c) => ({ usuario: c.usuario, comentario: c.comentario })),
       });
     } catch (e) {
       next(e);
@@ -81,10 +85,9 @@ module.exports = (modelos) => {
   }
 
   function mostrarCarrito(req, res) {
-    res.render('carrito', {
-      titulo: req.restaurante.nombre,
-      carrito: leerCarrito(req, req.rid),
-      ...ayudasVista(req.rid),
+    res.json({
+      restaurante: restaurantePublico(req.restaurante),
+      items: leerCarrito(req, req.rid),
     });
   }
 
@@ -92,19 +95,19 @@ module.exports = (modelos) => {
     try {
       const rid = req.rid;
       const itemId = entero(req.body && req.body.iditems);
-      if (itemId === null) return res.status(400).json({ error: 'Solicitud inválida' });
+      if (itemId === null) return res.status(400).json({ error: 'Solicitud inválida', codigo: 'invalida' });
       const carrito = leerCarrito(req, rid);
       if (carrito.length >= CARRITO_MAX_ITEMS) {
-        return res.status(409).json({ error: 'El carrito alcanzó el máximo de productos' });
+        return res.status(409).json({ error: 'El carrito alcanzó el máximo de productos', codigo: 'lleno' });
       }
       const item = await modelos.carta.itemParaCarrito(itemId, rid);
-      if (!item) return res.status(404).json({ error: 'Producto no encontrado' });
+      if (!item) return res.status(404).json({ error: 'Producto no encontrado', codigo: 'no_encontrado' });
       const posicion = carrito.reduce((m, p) => Math.max(m, p.posicion), 0) + 1;
       guardarCarrito(req, rid, [
         ...carrito,
         { posicion, id: item.id, nombre: String(item.nombre), precio: Number(item.precio) || 0 },
       ]);
-      return res.json({ ok: true });
+      return res.status(201).json({ ok: true, total: carrito.length + 1 });
     } catch (e) {
       return next(e);
     }
@@ -112,7 +115,7 @@ module.exports = (modelos) => {
 
   function eliminarItem(req, res) {
     const pos = entero(req.params.pos);
-    if (pos === null) return res.status(400).json({ error: 'Solicitud inválida' });
+    if (pos === null) return res.status(400).json({ error: 'Solicitud inválida', codigo: 'invalida' });
     guardarCarrito(req, req.rid, leerCarrito(req, req.rid).filter((p) => p.posicion !== pos));
     return res.json({ ok: true });
   }
@@ -122,13 +125,15 @@ module.exports = (modelos) => {
     return res.json({ ok: true });
   }
 
-  // Solo se acepta application/x-www-form-urlencoded en el alta (igual que carrito.php: 415 si no).
-  function soloFormulario(req, res, next) {
-    if (!req.is('application/x-www-form-urlencoded')) {
-      logSeguridad('SEC', 'carrito_tipo_contenido_rechazado', {}, req);
-      return res.status(415).json({ error: 'Tipo de contenido no soportado' });
-    }
-    return next();
+  // Las escrituras de la API solo aceptan JSON (415 si no): un formulario HTML de otro sitio no puede enviarlo.
+  function soloJson(evento) {
+    return (req, res, next) => {
+      if (!req.is('application/json')) {
+        logSeguridad('SEC', evento, {}, req);
+        return res.status(415).json({ error: 'Tipo de contenido no soportado', codigo: 'tipo' });
+      }
+      return next();
+    };
   }
 
   return {
@@ -138,7 +143,7 @@ module.exports = (modelos) => {
     agregarItem,
     eliminarItem,
     vaciarCarrito,
-    soloFormulario,
+    soloJson,
     CARRITO_MAX_ITEMS,
   };
 };

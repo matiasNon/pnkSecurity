@@ -49,8 +49,8 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
     await expect(page.locator('#myModal')).toBeHidden();
     await page.getByRole('link', { name: /Productos Seleccionados/ }).click();
     await expect(page).toHaveURL(/\/restaurantes\/1\/carrito$/);
-    await expect(page.getByRole('cell', { name: 'Lomo a lo Pobre' })).toBeVisible();
-    await expect(page.getByRole('cell', { name: '$ 12.500' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Lomo a lo Pobre', exact: true })).toBeVisible();
+    await expect(page.getByRole('cell', { name: '$ 12.500', exact: true })).toBeVisible();
     await captura(page, '04-carrito');
   });
 
@@ -111,7 +111,7 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
     await page.locator('#f-precio').fill('7800');
     await page.locator('#f-puntuacion').fill('5');
     await page.locator('#f-visible').check();
-    await page.locator('#f-foto').setInputFiles(path.join(__dirname, '..', '..', 'public', 'imagenes', 'cod1', 'item1.jpg'));
+    await page.locator('#f-foto').setInputFiles(path.join(__dirname, '..', '..', 'frontend', 'public', 'imagenes', 'cod1', 'item1.jpg'));
     await captura(page, '08-admin-formulario');
     await page.getByRole('button', { name: 'Guardar' }).click();
     await expect(page.getByText('Registro creado.')).toBeVisible();
@@ -129,6 +129,8 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
     await page.getByPlaceholder('Usuario').fill('admin@gmail.com');
     await page.getByPlaceholder('Contraseña').fill('admin01');
     await page.getByRole('button', { name: 'Ingresar' }).click();
+    // El login es por fetch: se espera a que la pagina muestre la sesion iniciada antes de navegar.
+    await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
     await page.goto('/admin/productos');
     const fila = page.locator('tr', { hasText: `Plato e2e ${sufijo}` });
     await fila.getByRole('button', { name: 'Eliminar' }).click();
@@ -142,8 +144,13 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
     await page.getByPlaceholder('Usuario').fill('alondra@gmail.com');
     await page.getByPlaceholder('Contraseña').fill('alondra01');
     await page.getByRole('button', { name: 'Ingresar' }).click();
-    const respuesta = await page.goto('/admin');
-    expect(respuesta.status()).toBe(403);
+    await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
+    // La pagina /admin es estatica (la entrega nginx); quien niega el acceso es la API del backend.
+    const api = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/admin');
+    await page.goto('/admin');
+    expect((await api).status()).toBe(403);
+    await expect(page.getByText('Acceso restringido')).toBeVisible();
+    await expect(page.getByText('Cartas')).toHaveCount(0);
     await captura(page, '10-panel-denegado', { fullPage: false });
   });
 

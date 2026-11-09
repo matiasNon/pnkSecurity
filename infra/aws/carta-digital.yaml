@@ -1,0 +1,495 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Carta Digital PNK - alta disponibilidad en AWS con frontend y backend separados: ALB (HTTPS, enruta por ruta) +
+  ASG frontend (nginx, paginas estaticas) + ASG backend (API Node/Express) + RDS PostgreSQL 17 (TLS) +
+  EFS (fotos compartidas) + Secrets Manager. Todo el ambiente se crea y se borra con este stack
+  (infra/aws/desplegar.sh y infra/aws/destruir.sh). Solo Cloudflare queda manual.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC donde se despliega (desplegar.sh usa la VPC por defecto).
+  Subred1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subred publica en una zona de disponibilidad.
+  Subred2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subred publica en OTRA zona de disponibilidad (ALB, RDS y EFS exigen 2 zonas).
+  CertificadoArn:
+    Type: String
+    Description: ARN del certificado en ACM para el listener HTTPS del balanceador.
+  RepoUrl:
+    Type: String
+    Default: https://github.com/matiasNon/pnkSecurity.git
+  Rama:
+    Type: String
+    Default: produccion
+    Description: Rama de Git que se despliega.
+  DominioPublico:
+    Type: String
+    Default: ''
+    Description: Dominio de Cloudflare (vacio = se usa el nombre DNS del balanceador).
+  TipoInstancia:
+    Type: String
+    Default: t3.micro
+    AllowedValues: [t3.micro, t3.small, t3.medium]
+    Description: Tipo de las instancias de ambos ASG (AWS Academy permite hasta 9 instancias a la vez).
+  ClaseBd:
+    Type: String
+    Default: db.t3.micro
+    AllowedValues: [db.t3.micro, db.t3.small, db.t4g.micro]
+  FrontendMin:
+    Type: Number
+    Default: 2
+    MinValue: 1
+  FrontendMax:
+    Type: Number
+    Default: 3
+    MinValue: 1
+  BackendMin:
+    Type: Number
+    Default: 2
+    MinValue: 1
+  BackendMax:
+    Type: Number
+    Default: 3
+    MinValue: 1
+  VersionPostgres:
+    Type: String
+    Default: '17.6'
+    AllowedPattern: '^17\.[0-9]+$'
+    Description: Version menor de PostgreSQL 17 (desplegar.sh usa la vigente por defecto en RDS).
+  PerfilInstancia:
+    Type: String
+    Default: LabInstanceProfile
+    Description: Perfil IAM de las EC2 (en AWS Academy existe LabInstanceProfile; no se pueden crear roles).
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+    Description: Ubuntu 24.04 LTS mas reciente (parametro publico de Canonical).
+
+Conditions:
+  SinDominio: !Equals [!Ref DominioPublico, '']
+
+Resources:
+  # ---------------- Secretos (generados por AWS, nunca en el repo ni en el user-data) ----------------
+  SecretoBd:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Usuario y clave de RDS (carta digital)
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"pnk_app"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+
+  SecretoApp:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: SESSION_SECRET compartido por todas las instancias
+      GenerateSecretString:
+        SecretStringTemplate: '{"tipo":"sesion"}'
+        GenerateStringKey: valor
+        PasswordLength: 64
+        ExcludePunctuation: true
+
+  SecretoAdmin:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Clave inicial de admin@gmail.com (solo se usa si la cuenta no existe)
+      GenerateSecretString:
+        SecretStringTemplate: '{"email":"admin@gmail.com"}'
+        GenerateStringKey: password
+        PasswordLength: 20
+        ExcludePunctuation: true
+
+  SecretoCliente:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Clave inicial de alondra@gmail.com
+      GenerateSecretString:
+        SecretStringTemplate: '{"email":"alondra@gmail.com"}'
+        GenerateStringKey: password
+        PasswordLength: 20
+        ExcludePunctuation: true
+
+  # ---------------- Security Groups: cada capa solo acepta trafico de la capa anterior ----------------
+  SgBalanceador:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB - HTTP y HTTPS desde internet
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0, Description: HTTP (redirige a HTTPS) }
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0, Description: HTTPS }
+      Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-sg-alb' }]
+
+  SgFrontend:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Instancias del frontend (nginx) - solo desde el balanceador (sin SSH)
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 8080, ToPort: 8080, SourceSecurityGroupId: !Ref SgBalanceador, Description: Frontend desde el ALB }
+      Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-sg-frontend' }]
+
+  SgBackend:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Instancias del backend (API) - solo desde el balanceador (sin SSH)
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 3000, ToPort: 3000, SourceSecurityGroupId: !Ref SgBalanceador, Description: API desde el ALB }
+      Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-sg-backend' }]
+
+  SgBd:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS PostgreSQL - solo desde el backend
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 5432, ToPort: 5432, SourceSecurityGroupId: !Ref SgBackend, Description: PostgreSQL desde el backend }
+      Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-sg-bd' }]
+
+  SgEfs:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EFS - NFS solo desde el backend
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 2049, ToPort: 2049, SourceSecurityGroupId: !Ref SgBackend, Description: NFS desde el backend }
+      Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-sg-efs' }]
+
+  # ---------------- Base de datos: RDS PostgreSQL 17, privada, cifrada, TLS obligatorio ----------------
+  GrupoSubredesBd:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subredes de la BD de la carta digital
+      SubnetIds: [!Ref Subred1, !Ref Subred2]
+
+  BaseDatos:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      DBInstanceIdentifier: !Sub '${AWS::StackName}-bd'
+      Engine: postgres
+      EngineVersion: !Ref VersionPostgres
+      DBInstanceClass: !Ref ClaseBd
+      AllocatedStorage: '20'
+      StorageType: gp3
+      StorageEncrypted: true
+      DBName: pnk_carta
+      MasterUsername: !Sub '{{resolve:secretsmanager:${SecretoBd}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${SecretoBd}:SecretString:password}}'
+      DBSubnetGroupName: !Ref GrupoSubredesBd
+      VPCSecurityGroups: [!Ref SgBd]
+      PubliclyAccessible: false
+      MultiAZ: false
+      BackupRetentionPeriod: 1
+      DeletionProtection: false
+      AutoMinorVersionUpgrade: true
+
+  # ---------------- Fotos del panel: EFS compartido por todas las instancias ----------------
+  ArchivosEfs:
+    Type: AWS::EFS::FileSystem
+    DeletionPolicy: Delete
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      FileSystemTags: [{ Key: Name, Value: !Sub '${AWS::StackName}-fotos' }]
+
+  MontajeEfs1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref ArchivosEfs
+      SubnetId: !Ref Subred1
+      SecurityGroups: [!Ref SgEfs]
+
+  MontajeEfs2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref ArchivosEfs
+      SubnetId: !Ref Subred2
+      SecurityGroups: [!Ref SgEfs]
+
+  # ---------------- Balanceador (ALB) ----------------
+  Balanceador:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${AWS::StackName}-alb'
+      Scheme: internet-facing
+      Type: application
+      Subnets: [!Ref Subred1, !Ref Subred2]
+      SecurityGroups: [!Ref SgBalanceador]
+      LoadBalancerAttributes:
+        - { Key: routing.http.drop_invalid_header_fields.enabled, Value: 'true' }
+        - { Key: routing.http.x_amzn_tls_version_and_cipher_suite.enabled, Value: 'false' }
+
+  GrupoFrontend:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${AWS::StackName}-tg-front'
+      VpcId: !Ref VpcId
+      Protocol: HTTP
+      Port: 8080
+      TargetType: instance
+      HealthCheckPath: /salud
+      HealthCheckIntervalSeconds: 15
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher: { HttpCode: '200' }
+      TargetGroupAttributes:
+        - { Key: deregistration_delay.timeout_seconds, Value: '30' }
+
+  GrupoBackend:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${AWS::StackName}-tg-back'
+      VpcId: !Ref VpcId
+      Protocol: HTTP
+      Port: 3000
+      TargetType: instance
+      # /api/health tambien comprueba la conexion a RDS: una instancia sin BD sale del balanceo.
+      HealthCheckPath: /api/health
+      HealthCheckIntervalSeconds: 15
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher: { HttpCode: '200' }
+      TargetGroupAttributes:
+        - { Key: deregistration_delay.timeout_seconds, Value: '30' }
+
+  # HTTPS: por defecto al frontend; la API y las fotos subidas al backend (mismo origen para el navegador).
+  EscuchaHttps:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Balanceador
+      Protocol: HTTPS
+      Port: 443
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      Certificates: [{ CertificateArn: !Ref CertificadoArn }]
+      DefaultActions: [{ Type: forward, TargetGroupArn: !Ref GrupoFrontend }]
+
+  ReglaApi:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref EscuchaHttps
+      Priority: 10
+      Conditions:
+        - Field: path-pattern
+          PathPatternConfig: { Values: ['/api/*', '/uploads/*'] }
+      Actions: [{ Type: forward, TargetGroupArn: !Ref GrupoBackend }]
+
+  EscuchaHttp:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Balanceador
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig: { Protocol: HTTPS, Port: '443', StatusCode: HTTP_301 }
+
+  # ---------------- Instancias: 2 Launch Templates + 2 Auto Scaling Groups ----------------
+  # FRONTEND: solo nginx con archivos estaticos. Sin perfil IAM (no necesita credenciales de AWS) ni acceso a BD/EFS.
+  PlantillaFrontend:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub '${AWS::StackName}-lt-front'
+      LaunchTemplateData:
+        ImageId: !Ref AmiId
+        InstanceType: !Ref TipoInstancia
+        SecurityGroupIds: [!Ref SgFrontend]
+        MetadataOptions: { HttpTokens: required, HttpPutResponseHopLimit: 1, HttpEndpoint: enabled }
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs: { VolumeSize: 12, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+        TagSpecifications:
+          - ResourceType: instance
+            Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-frontend' }, { Key: Capa, Value: frontend }]
+        UserData:
+          Fn::Base64: !Sub |
+              #!/bin/bash
+              # Arranque de cada instancia del ASG FRONTEND (generado por CloudFormation).
+              set -euo pipefail
+              exec > >(tee /var/log/carta-frontend-arranque.log) 2>&1
+              export DEBIAN_FRONTEND=noninteractive
+              DIR=/opt/carta-digital
+
+              # 1) Docker
+              apt-get update -y
+              apt-get install -y ca-certificates curl git
+              install -m 0755 -d /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+              . /etc/os-release
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" > /etc/apt/sources.list.d/docker.list
+              apt-get update -y
+              apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+
+              # 2) Codigo de la rama y arranque de nginx (variante "aws": sin reenvio a /api, eso lo hace el ALB)
+              git clone --depth 1 --branch "${Rama}" "${RepoUrl}" "$DIR"
+              cd "$DIR"
+              docker compose -p carta-digital -f docker-compose.aws.yml --profile frontend up -d --build
+              echo "Frontend iniciado (commit $(git rev-parse --short HEAD))"
+
+  # BACKEND: API Node/Express. Lee secretos y el endpoint de RDS con el perfil del laboratorio; monta EFS.
+  PlantillaBackend:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub '${AWS::StackName}-lt-back'
+      LaunchTemplateData:
+        ImageId: !Ref AmiId
+        InstanceType: !Ref TipoInstancia
+        IamInstanceProfile: { Name: !Ref PerfilInstancia }
+        SecurityGroupIds: [!Ref SgBackend]
+        # IMDSv2 obligatorio y salto 1: los contenedores no pueden leer las credenciales de la instancia.
+        MetadataOptions: { HttpTokens: required, HttpPutResponseHopLimit: 1, HttpEndpoint: enabled }
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs: { VolumeSize: 16, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+        TagSpecifications:
+          - ResourceType: instance
+            Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-backend' }, { Key: Capa, Value: backend }]
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              #!/bin/bash
+              # Arranque de cada instancia del ASG BACKEND (generado por CloudFormation).
+              set -euo pipefail
+              exec > >(tee /var/log/carta-backend-arranque.log) 2>&1
+              export DEBIAN_FRONTEND=noninteractive
+              REGION=${AWS::Region}
+              DIR=/opt/carta-digital
+
+              # 1) Docker, cliente NFS y AWS CLI
+              apt-get update -y
+              apt-get install -y ca-certificates curl git unzip nfs-common jq
+              install -m 0755 -d /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+              . /etc/os-release
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" > /etc/apt/sources.list.d/docker.list
+              apt-get update -y
+              apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+              curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscli.zip
+              unzip -q /tmp/awscli.zip -d /tmp && /tmp/aws/install && rm -rf /tmp/aws /tmp/awscli.zip
+
+              # 2) Codigo de la rama (se construye la imagen mientras RDS termina de crearse)
+              git clone --depth 1 --branch "${Rama}" "${RepoUrl}" "$DIR"
+              cd "$DIR"
+              docker compose -p carta-digital -f docker-compose.aws.yml --profile backend build
+
+              # 3) Fotos compartidas: EFS en /mnt/efs (dueno uid 1000 = usuario "node" del contenedor)
+              mkdir -p /mnt/efs
+              until mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport \
+                  ${ArchivosEfs}.efs.$REGION.amazonaws.com:/ /mnt/efs; do echo "Esperando EFS..."; sleep 10; done
+              echo "${ArchivosEfs}.efs.$REGION.amazonaws.com:/ /mnt/efs nfs4 nfsvers=4.1,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab
+              mkdir -p /mnt/efs/uploads && chown 1000:1000 /mnt/efs/uploads && chmod 750 /mnt/efs/uploads
+
+              # 4) Certificado de la CA de RDS (verificacion TLS de la BD)
+              curl -fsSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o "$DIR/rds-ca.pem"
+
+              # 5) Esperar a que RDS este disponible y leer su endpoint
+              aws rds wait db-instance-available --region $REGION --db-instance-identifier "${AWS::StackName}-bd" || true
+              until DB_HOST=$(aws rds describe-db-instances --region $REGION --db-instance-identifier "${AWS::StackName}-bd" \
+                  --query 'DBInstances[0].Endpoint.Address' --output text) && [ "$DB_HOST" != "None" ]; do sleep 15; done
+
+              # 6) Secretos desde Secrets Manager -> .env.aws (solo root, nunca sale de la instancia)
+              secreto() { aws secretsmanager get-secret-value --region $REGION --secret-id "$1" --query SecretString --output text | jq -r ".$2"; }
+              umask 077
+              cat > "$DIR/.env.aws" <<EOF
+              DB_HOST=$DB_HOST
+              DB_PORT=5432
+              DB_NAME=pnk_carta
+              DB_USER=$(secreto "${SecretoBd}" username)
+              DB_PASSWORD=$(secreto "${SecretoBd}" password)
+              SESSION_SECRET=$(secreto "${SecretoApp}" valor)
+              ADMIN_PASSWORD=$(secreto "${SecretoAdmin}" password)
+              CLIENTE_PASSWORD=$(secreto "${SecretoCliente}" password)
+              PUBLIC_HOST=${Host}
+              FORCE_HTTPS=1
+              EOF
+              sed -i 's/^ *//' "$DIR/.env.aws"
+
+              # 7) Arranque del contenedor
+              EFS_UPLOADS=/mnt/efs/uploads RDS_CA="$DIR/rds-ca.pem" docker compose -p carta-digital -f docker-compose.aws.yml --profile backend up -d
+              echo "Backend iniciado (commit $(git rev-parse --short HEAD))"
+            - Host: !If [SinDominio, !GetAtt Balanceador.DNSName, !Ref DominioPublico]
+
+  AsgFrontend:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn: [EscuchaHttps]
+    Properties:
+      AutoScalingGroupName: !Sub '${AWS::StackName}-asg-front'
+      VPCZoneIdentifier: [!Ref Subred1, !Ref Subred2]
+      LaunchTemplate:
+        LaunchTemplateId: !Ref PlantillaFrontend
+        Version: !GetAtt PlantillaFrontend.LatestVersionNumber
+      MinSize: !Ref FrontendMin
+      MaxSize: !Ref FrontendMax
+      DesiredCapacity: !Ref FrontendMin
+      TargetGroupARNs: [!Ref GrupoFrontend]
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 600
+      Tags:
+        - { Key: Proyecto, Value: carta-digital, PropagateAtLaunch: true }
+
+  AsgBackend:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn: [MontajeEfs1, MontajeEfs2, ReglaApi]
+    Properties:
+      AutoScalingGroupName: !Sub '${AWS::StackName}-asg-back'
+      VPCZoneIdentifier: [!Ref Subred1, !Ref Subred2]
+      LaunchTemplate:
+        LaunchTemplateId: !Ref PlantillaBackend
+        Version: !GetAtt PlantillaBackend.LatestVersionNumber
+      MinSize: !Ref BackendMin
+      MaxSize: !Ref BackendMax
+      DesiredCapacity: !Ref BackendMin
+      TargetGroupARNs: [!Ref GrupoBackend]
+      HealthCheckType: ELB
+      # Primer arranque: instalar Docker + construir imagen + esperar RDS puede tomar ~10 min.
+      HealthCheckGracePeriod: 900
+      Tags:
+        - { Key: Proyecto, Value: carta-digital, PropagateAtLaunch: true }
+
+  EscaladoFrontend:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref AsgFrontend
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification: { PredefinedMetricType: ASGAverageCPUUtilization }
+        TargetValue: 60
+
+  EscaladoBackend:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref AsgBackend
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification: { PredefinedMetricType: ASGAverageCPUUtilization }
+        TargetValue: 60
+
+Outputs:
+  Url:
+    Description: URL publica de la carta (certificado autofirmado hasta configurar Cloudflare)
+    Value: !Sub
+      - 'https://${H}/restaurantes/1'
+      - H: !If [SinDominio, !GetAtt Balanceador.DNSName, !Ref DominioPublico]
+  DnsBalanceador:
+    Description: Nombre DNS del ALB (destino del registro CNAME en Cloudflare)
+    Value: !GetAtt Balanceador.DNSName
+  GrupoFrontendArn:
+    Value: !Ref GrupoFrontend
+  GrupoBackendArn:
+    Value: !Ref GrupoBackend
+  AsgFrontendNombre:
+    Value: !Ref AsgFrontend
+  AsgBackendNombre:
+    Value: !Ref AsgBackend
+  SecretoAdminArn:
+    Description: Clave inicial del administrador (desplegar.sh la muestra)
+    Value: !Ref SecretoAdmin
+  EndpointBd:
+    Value: !GetAtt BaseDatos.Endpoint.Address

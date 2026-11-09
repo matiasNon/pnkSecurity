@@ -1,16 +1,18 @@
 'use strict';
 // CSRF (ASVS v5 V3.5): token aleatorio por sesion, comparacion en tiempo constante.
-// El token llega por el campo de formulario "csrf" o por la cabecera X-CSRF-Token (AJAX).
+// El token llega por la cabecera X-CSRF-Token (o, por compatibilidad, en el campo "csrf" del cuerpo).
 
 const crypto = require('node:crypto');
 const { logSeguridad } = require('../services/logSeguridad');
 
-// Garantiza que la sesion tenga token y lo expone a las vistas.
+// Garantiza que la sesion tenga token. El frontend lo obtiene con GET /api/sesion y lo envia en X-CSRF-Token.
+function nuevoToken(req) {
+  req.session.csrf = crypto.randomBytes(32).toString('hex');
+  return req.session.csrf;
+}
+
 function asegurarToken(req, res, next) {
-  if (!req.session.csrf) {
-    req.session.csrf = crypto.randomBytes(32).toString('hex');
-  }
-  res.locals.csrfToken = req.session.csrf;
+  if (!req.session.csrf) nuevoToken(req);
   next();
 }
 
@@ -26,16 +28,15 @@ function csrfValido(req) {
   return Boolean(req.session && req.session.csrf) && tokensIguales(req.session.csrf, enviado);
 }
 
-// Valida el token en toda peticion que modifica estado. "alFallar" permite redirigir con un aviso
-// (login, comentarios); por defecto responde 403.
-function validarCsrf(evento, alFallar) {
+// Valida el token en toda peticion que modifica estado. Si falla responde 403 con codigo "csrf"
+// (el frontend pide un token nuevo y avisa que la solicitud expiro).
+function validarCsrf(evento) {
   return (req, res, next) => {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
     if (csrfValido(req)) return next();
     logSeguridad('SEC', evento, {}, req);
-    if (alFallar) return alFallar(req, res);
-    return res.status(403).render('error', { titulo: 'Solicitud no autorizada', codigo: 403 });
+    return res.status(403).json({ error: 'La solicitud expiró. Intente nuevamente.', codigo: 'csrf' });
   };
 }
 
-module.exports = { asegurarToken, validarCsrf, csrfValido, tokensIguales };
+module.exports = { asegurarToken, nuevoToken, validarCsrf, csrfValido, tokensIguales };

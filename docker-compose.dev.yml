@@ -1,4 +1,5 @@
 # Ambiente de DESARROLLO: codigo montado como volumen con recarga automatica, Postgres expuesto solo en localhost.
+# La carta queda en http://localhost:3000 (frontend; la API se alcanza por el mismo origen en /api).
 services:
   db:
     env_file: .env.dev
@@ -7,16 +8,19 @@ services:
     volumes:
       - pgdata_dev:/var/lib/postgresql/data
 
-  app:
+  backend:
     env_file: .env.dev
     command: ["node", "--watch", "src/server.js"]
-    ports:
-      - "3000:3000"
     volumes:
       - ./src:/app/src:ro
-      - ./public:/app/public:ro
       - ./db:/app/db:ro
       - ./scripts:/app/scripts:ro
+
+  frontend:
+    ports:
+      - "3000:8080"
+    volumes:
+      - ./frontend/public:/usr/share/nginx/html:ro
 
 volumes:
   pgdata_dev: {}

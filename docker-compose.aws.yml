@@ -1,0 +1,72 @@
+# Ambiente de PRODUCCION EN AWS CON ALTA DISPONIBILIDAD: ALB + 2 Auto Scaling Groups + RDS + EFS.
+# Archivo autonomo (NO se combina con docker-compose.yml). Cada tipo de instancia levanta SOLO su perfil:
+#   ASG frontend:  docker compose -p carta-digital -f docker-compose.aws.yml --profile frontend up -d --build
+#   ASG backend:   docker compose -p carta-digital -f docker-compose.aws.yml --profile backend  up -d --build
+# El balanceador enruta por ruta: /api/* y /uploads/* -> ASG backend (puerto 3000); todo lo demas -> ASG frontend (8080).
+# Ambos comparten el mismo origen (el dominio del ALB/Cloudflare): sin CORS, cookie SameSite=Strict y CSRF intactos.
+#   - BD: RDS PostgreSQL 17, solo la alcanza el backend, TLS verificado con la CA de RDS (DB_SSL=1).
+#   - Fotos del panel: EFS montado en /mnt/efs en las instancias del backend (compartido entre ellas).
+#   - Sesiones y contadores anti fuerza bruta: en PostgreSQL (funcionan con varias instancias).
+# Lo usa infra/aws/carta-digital.yaml (user-data de cada Launch Template).
+services:
+  backend:
+    profiles: [backend]
+    container_name: carta-backend
+    build:
+      context: .
+      target: runtime
+    image: carta-backend:latest
+    restart: unless-stopped
+    env_file: .env.aws
+    environment:
+      APP_ENV: prod
+      NODE_ENV: production
+      PORT: "3000"
+      # Las migraciones usan un candado de asesoria: varias instancias pueden arrancar a la vez sin conflicto.
+      AUTO_MIGRATE: "1"
+      DB_SSL: "1"
+      DB_SSL_CA: /certs/rds-ca.pem
+      UPLOAD_DIR: /data/uploads
+      # Detras del ALB: se confia en X-Forwarded-* de un solo salto (el balanceador).
+      TRUST_PROXY: "1"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ${EFS_UPLOADS:-/mnt/efs/uploads}:/data/uploads
+      - ${RDS_CA:-/opt/carta-digital/rds-ca.pem}:/certs/rds-ca.pem:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  frontend:
+    profiles: [frontend]
+    container_name: carta-frontend
+    build:
+      context: ./frontend
+      # Variante "aws": solo estaticos, sin reenvio a /api (eso lo hace el ALB).
+      target: aws
+    image: carta-frontend:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

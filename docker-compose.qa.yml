@@ -1,15 +1,17 @@
-# Ambiente de QA: BD EFIMERA (tmpfs, se recrea con la migracion en cada ejecucion), imagen igual a la de produccion
+# Ambiente de QA: BD EFIMERA (tmpfs, se recrea con la migracion en cada ejecucion), imagenes iguales a las de produccion
 # y servicios de prueba. Se ejecuta con scripts/qa.sh (o a mano):
-#   docker compose -f docker-compose.yml -f docker-compose.qa.yml run --rm tests   # funcionales (Jest + Supertest)
-#   docker compose -f docker-compose.yml -f docker-compose.qa.yml run --rm e2e     # navegador real (Playwright)
+#   docker compose -f docker-compose.yml -f docker-compose.qa.yml run --rm tests   # API (Jest + Supertest)
+#   docker compose -f docker-compose.yml -f docker-compose.qa.yml run --rm e2e     # navegador real (Playwright) -> frontend
 services:
   db:
     env_file: .env.qa
     tmpfs:
       - /var/lib/postgresql/data
 
-  app:
+  backend:
     env_file: .env.qa
+
+  frontend:
     networks:
       interna:
         # Alias distinto de "app": ".app" es un TLD con HSTS precargado y Chromium forzaria HTTPS.
@@ -35,10 +37,10 @@ services:
       context: .
       target: e2e
     depends_on:
-      app:
+      frontend:
         condition: service_healthy
     environment:
-      BASE_URL: http://carta:3000
+      BASE_URL: http://carta:8080
       EVIDENCIA_DIR: /evidencia
     volumes:
       - ./reports:/app/reports

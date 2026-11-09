@@ -7,6 +7,7 @@ playwright-report/
 # Variables de entorno reales: nunca se commitean (solo los ejemplos .env.dev, .env.qa y .env.prod.example)
 .env
 .env.prod
+.env.aws
 .env.local
 
 # Subidas del panel de administracion (volumen de Docker, no codigo)
@@ -22,3 +23,5 @@ uploads/
 
 # Certificados TLS generados (infra/certs)
 infra/certs/
+# Salida de infra/aws/desplegar.sh (datos del ambiente, sin secretos)
+infra/aws/salida.env

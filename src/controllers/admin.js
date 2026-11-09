@@ -1,5 +1,5 @@
 'use strict';
-// Panel de administracion: CRUD de cartas, categorias y productos.
+// API del panel de administracion: CRUD de cartas, categorias y productos (JSON; la foto llega en multipart).
 // Todas las operaciones usan req.usuario.restaurante_id (de la sesion verificada en BD), nunca un id del cliente.
 
 const { entero, rutaFoto } = require('../utils/validar');
@@ -15,7 +15,7 @@ const MENSAJES = {
 module.exports = (modelos, subidas) => {
   const m = modelos.admin;
 
-  // Definicion de cada recurso: sus datos y como se dibuja la lista y el formulario.
+  // Definicion de cada recurso: sus datos y como el frontend dibuja la lista y el formulario.
   const recursos = {
     cartas: {
       singular: 'Carta',
@@ -105,88 +105,89 @@ module.exports = (modelos, subidas) => {
     },
   };
 
+  const NO_ENCONTRADO = { error: 'Registro no encontrado', codigo: 'no_encontrado' };
+
+  // Lo que el frontend necesita para dibujar la lista y el formulario de un recurso.
+  const meta = (r, nombre) => ({
+    recurso: nombre,
+    singular: r.singular,
+    plural: r.plural,
+    nuevo: r.nuevo,
+    multipart: Boolean(r.multipart),
+    columnas: r.columnas,
+  });
+
   function recursoDe(req, res, next) {
     const r = Object.hasOwn(recursos, req.params.recurso) ? recursos[req.params.recurso] : null;
-    if (!r) return res.status(404).render('error', { titulo: 'Página no encontrada', codigo: 404 });
+    if (!r) return res.status(404).json({ error: 'Recurso no encontrado', codigo: 'no_encontrado' });
     req.recurso = r;
     req.nombreRecurso = req.params.recurso;
     return next();
   }
 
+  // GET /api/admin: resumen del panel (restaurante del admin y totales).
   async function panel(req, res, next) {
     try {
       const rid = req.usuario.restaurante_id;
       const [cartas, categorias, items, restaurante] = await Promise.all([
         m.listarCartas(rid), m.listarCategorias(rid), m.listarItems(rid), modelos.restaurante.obtener(rid),
       ]);
-      res.render('admin/panel', {
-        titulo: 'Panel de administración',
-        restaurante,
+      res.json({
+        usuario: { nombre: req.usuario.nombre, rol: req.usuario.rol },
+        restaurante: { id: restaurante.id, nombre: restaurante.nombre },
         totales: { cartas: cartas.length, categorias: categorias.length, productos: items.length },
       });
     } catch (e) { next(e); }
   }
 
+  // GET /api/admin/:recurso
   async function lista(req, res, next) {
     try {
-      const rid = req.usuario.restaurante_id;
-      const filas = await req.recurso.listar(rid);
-      const mensaje = typeof req.query.m === 'string' && Object.hasOwn(MENSAJES, req.query.m) ? MENSAJES[req.query.m] : null;
-      res.render('admin/lista', {
-        titulo: req.recurso.plural, recurso: req.recurso, nombreRecurso: req.nombreRecurso, filas, mensaje,
-      });
+      const filas = await req.recurso.listar(req.usuario.restaurante_id);
+      res.json({ ...meta(req.recurso, req.nombreRecurso), filas: filas.map(({ foto: _foto, ...f }) => f) });
     } catch (e) { next(e); }
   }
 
-  async function formulario(req, res, next, { valores, errores, id = null, estado = 200, error = null }) {
-    const rid = req.usuario.restaurante_id;
-    const campos = await req.recurso.campos(rid);
-    res.status(estado).render('admin/formulario', {
-      titulo: id ? `Editar ${req.recurso.singular.toLowerCase()}` : `${req.recurso.nuevo} ${req.recurso.singular.toLowerCase()}`,
-      recurso: req.recurso, nombreRecurso: req.nombreRecurso, campos, valores, errores: errores || {}, id,
-      errorGeneral: error, fotoActual: valores && valores.foto ? rutaFoto(rid, valores.foto) : null,
-    });
-  }
-
+  // GET /api/admin/:recurso/nuevo -> campos del formulario (con las opciones de los select) y valores por defecto.
   async function nuevo(req, res, next) {
     try {
-      await formulario(req, res, next, { valores: { ...req.recurso.porDefecto } });
+      const campos = await req.recurso.campos(req.usuario.restaurante_id);
+      res.json({ ...meta(req.recurso, req.nombreRecurso), campos, valores: { ...req.recurso.porDefecto }, fotoActual: null });
     } catch (e) { next(e); }
   }
 
+  // GET /api/admin/:recurso/:id -> campos y valores actuales del registro.
   async function editar(req, res, next) {
     try {
+      const rid = req.usuario.restaurante_id;
       const id = entero(req.params.id);
-      const fila = id === null ? null : await req.recurso.obtener(req.usuario.restaurante_id, id);
-      if (!fila) return res.status(404).render('error', { titulo: 'Registro no encontrado', codigo: 404 });
-      return await formulario(req, res, next, { valores: fila, id });
+      const fila = id === null ? null : await req.recurso.obtener(rid, id);
+      if (!fila) return res.status(404).json(NO_ENCONTRADO);
+      const campos = await req.recurso.campos(rid);
+      const { foto, ...valores } = fila;
+      return res.json({ ...meta(req.recurso, req.nombreRecurso), campos, valores, fotoActual: rutaFoto(rid, foto) });
     } catch (e) { return next(e); }
   }
 
-  // Alta y modificacion comparten el mismo flujo: validar -> (subir foto) -> guardar -> redirigir.
+  // Alta (POST) y modificacion (PUT) comparten el mismo flujo: validar -> (subir foto) -> guardar.
+  // Errores de validacion: 400 { errores: { campo: mensaje } } para mostrarlos junto a cada campo.
   async function guardar(req, res, next) {
     const rid = req.usuario.restaurante_id;
     const id = req.params.id === undefined ? null : entero(req.params.id);
     try {
-      if (req.params.id !== undefined && id === null) {
-        return res.status(404).render('error', { titulo: 'Registro no encontrado', codigo: 404 });
-      }
+      if (req.params.id !== undefined && id === null) return res.status(404).json(NO_ENCONTRADO);
       const previo = id ? await req.recurso.obtener(rid, id) : null;
-      if (id && !previo) return res.status(404).render('error', { titulo: 'Registro no encontrado', codigo: 404 });
+      if (id && !previo) return res.status(404).json(NO_ENCONTRADO);
 
       const { datos, errores } = validar(req.recurso.esquema, req.body);
-      if (errores) {
-        return await formulario(req, res, next, { valores: { ...req.body, foto: previo && previo.foto }, errores, id, estado: 400 });
-      }
+      if (errores) return res.status(400).json({ error: 'Revise los campos marcados', codigo: 'validacion', errores });
 
       let foto = null;
       if (req.recurso.multipart) {
         try {
           foto = await subidas.guardarFoto(req, rid);
         } catch (e) {
-          return await formulario(req, res, next, {
-            valores: { ...req.body, foto: previo && previo.foto }, errores: { foto: e.message }, id, estado: 400,
-          });
+          return res.status(400).json({ error: 'Revise los campos marcados', codigo: 'validacion', errores: { foto: e.message } });
         }
         datos.foto = id ? (foto === null ? undefined : foto) : foto;
       }
@@ -196,27 +197,28 @@ module.exports = (modelos, subidas) => {
         // Referencia a una carta/categoria que no es del restaurante del admin (o ya no existe).
         if (foto) await subidas.borrarFoto(rid, foto);
         logSeguridad('SEC', 'admin_referencia_invalida', { uid: req.usuario.id, recurso: req.nombreRecurso }, req);
-        return await formulario(req, res, next, {
-          valores: { ...req.body, foto: previo && previo.foto },
-          errores: { general: 'La carta o categoría seleccionada no es válida' }, id, estado: 400,
+        return res.status(400).json({
+          error: 'La carta o categoría seleccionada no es válida', codigo: 'validacion',
+          errores: { general: 'La carta o categoría seleccionada no es válida' },
         });
       }
       if (id && foto && previo && previo.foto) await subidas.borrarFoto(rid, previo.foto);
       logSeguridad('ADMIN', `${req.nombreRecurso}_${id ? 'actualizado' : 'creado'}`, { uid: req.usuario.id, id: id || ok }, req);
-      return res.redirect(303, `/admin/${req.nombreRecurso}?m=${id ? 'actualizado' : 'creado'}`);
+      return res.status(id ? 200 : 201).json({ ok: true, id: id || ok, mensaje: id ? MENSAJES.actualizado : MENSAJES.creado });
     } catch (e) {
       logError('Error en el panel de administracion', e);
       return next(e);
     }
   }
 
+  // DELETE /api/admin/:recurso/:id
   async function eliminar(req, res, next) {
     try {
       const id = entero(req.params.id);
       const ok = id !== null && await req.recurso.eliminar(req.usuario.restaurante_id, id);
-      if (!ok) return res.status(404).render('error', { titulo: 'Registro no encontrado', codigo: 404 });
+      if (!ok) return res.status(404).json(NO_ENCONTRADO);
       logSeguridad('ADMIN', `${req.nombreRecurso}_eliminado`, { uid: req.usuario.id, id }, req);
-      return res.redirect(303, `/admin/${req.nombreRecurso}?m=eliminado`);
+      return res.json({ ok: true, mensaje: MENSAJES.eliminado });
     } catch (e) { return next(e); }
   }
 

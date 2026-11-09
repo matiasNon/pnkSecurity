@@ -14,6 +14,10 @@ const esquema = z.object({
   DB_NAME: z.string().min(1).default('pnk_carta'),
   DB_USER: z.string().min(1).default('pnk_app'),
   DB_PASSWORD: z.string().default(''),
+  // Conexion cifrada a la BD (obligatoria con Amazon RDS). DB_SSL_CA = ruta al certificado de la CA
+  // (en AWS: global-bundle.pem de RDS); con el se verifica la identidad del servidor (ASVS v5 V12.3).
+  DB_SSL: z.enum(['0', '1']).default('0'),
+  DB_SSL_CA: z.string().default(''),
 
   SESSION_SECRET: z.string().default(''),
   // Solo se confia en X-Forwarded-* si se declara explicitamente (de lo contrario cualquiera podria falsificarlas).
@@ -46,6 +50,9 @@ function cargarConfig(entorno = process.env) {
     if (cfg.DB_PASSWORD.length < 12 || debiles.includes(cfg.DB_PASSWORD.toLowerCase())) {
       throw new Error('Configuracion invalida: en produccion DB_PASSWORD debe ser fuerte (12+ caracteres).');
     }
+    if (cfg.DB_SSL === '1' && cfg.DB_SSL_CA === '') {
+      throw new Error('Configuracion invalida: en produccion DB_SSL=1 requiere DB_SSL_CA (certificado de la CA de la BD).');
+    }
     if (cfg.FORCE_HTTPS === '1' && !/^[A-Za-z0-9.-]{1,253}(:[0-9]{1,5})?$/.test(cfg.PUBLIC_HOST)) {
       throw new Error('Configuracion invalida: FORCE_HTTPS=1 requiere PUBLIC_HOST con un nombre de host valido.');
     }
@@ -62,6 +69,7 @@ function cargarConfig(entorno = process.env) {
     // La cookie de sesion solo viaja por HTTPS en produccion; en dev/qa se sirve por HTTP.
     cookieSegura: prod,
     confiarProxy: cfg.TRUST_PROXY === '1',
+    bdSsl: cfg.DB_SSL === '1',
     forzarHttps: cfg.FORCE_HTTPS === '1',
   });
 }

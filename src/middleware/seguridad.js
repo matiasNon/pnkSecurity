@@ -1,6 +1,7 @@
 'use strict';
 // Cabeceras HTTP de seguridad y HTTPS (ASVS v5 V3 / V12 / V13, ISO 27001 A.8.9 y A.8.24).
-// Mismas politicas que enviar_cabeceras_seguridad() de la version PHP: CSP sin scripts ni estilos en linea.
+// El backend solo entrega JSON e imagenes subidas: su CSP no permite cargar nada (default-src 'none').
+// La CSP de las paginas (sin scripts ni estilos en linea) la envia el frontend (frontend/nginx).
 
 const helmet = require('helmet');
 const { logSeguridad } = require('../services/logSeguridad');
@@ -10,15 +11,10 @@ function cabecerasSeguridad() {
     contentSecurityPolicy: {
       useDefaults: false,
       directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'"],
-        fontSrc: ["'self'", 'data:'],
-        imgSrc: ["'self'", 'data:'],
-        connectSrc: ["'self'"],
-        objectSrc: ["'none'"],
-        baseUri: ["'self'"],
-        formAction: ["'self'"],
+        defaultSrc: ["'none'"],
+        imgSrc: ["'self'"],
+        baseUri: ["'none'"],
+        formAction: ["'none'"],
         frameAncestors: ["'none'"],
       },
     },
@@ -42,7 +38,7 @@ function cabecerasSeguridad() {
   ];
 }
 
-// Paginas dinamicas: nunca se guardan en cache (contienen token CSRF y datos de sesion).
+// Respuestas de la API: nunca se guardan en cache (contienen token CSRF y datos de sesion).
 function sinCache(req, res, next) {
   res.setHeader('Cache-Control', 'no-store');
   next();

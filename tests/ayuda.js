@@ -36,28 +36,24 @@ function crearEntorno(extra = {}) {
   return { cfg, pool, app };
 }
 
-// El token CSRF se entrega en <meta name="csrf-token">.
-function extraerCsrf(html) {
-  const m = /name="csrf-token" content="([a-f0-9]+)"/.exec(html);
-  if (!m) throw new Error('No se encontro el token CSRF en la pagina');
-  return m[1];
+// El token CSRF lo entrega GET /api/sesion (el frontend lo envia en la cabecera X-CSRF-Token).
+async function tokenDe(agente) {
+  const res = await agente.get('/api/sesion');
+  if (!res.body || !res.body.csrf) throw new Error('No se obtuvo el token CSRF');
+  return res.body.csrf;
 }
 
-// Abre una pagina y devuelve el token CSRF de la sesion del agente.
-async function tokenDe(agente, ruta = '/restaurantes/1') {
-  const res = await agente.get(ruta);
-  return extraerCsrf(res.text);
-}
-
-async function iniciarSesion(app, email, password, restauranteId = 1) {
+// Inicia sesion por la API. Devuelve el agente (con la cookie), la respuesta y el token CSRF vigente
+// (el login renueva el token, asi que despues de un login exitoso se usa el nuevo).
+async function iniciarSesion(app, email, password) {
   const agente = request.agent(app);
-  const csrf = await tokenDe(agente, `/restaurantes/${restauranteId}`);
-  const res = await agente.post('/login').type('form').send({ csrf, id: restauranteId, frmusuario: email, frmpassword: password });
-  return { agente, res, csrf };
+  const previo = await tokenDe(agente);
+  const res = await agente.post('/api/login').set('X-CSRF-Token', previo).send({ email, password });
+  return { agente, res, csrf: (res.body && res.body.csrf) || previo };
 }
 
 async function limpiarIntentos(pool) {
   await pool.query('DELETE FROM intentos');
 }
 
-module.exports = { entornoPrueba, crearEntorno, extraerCsrf, tokenDe, iniciarSesion, limpiarIntentos, UPLOAD_DIR };
+module.exports = { entornoPrueba, crearEntorno, tokenDe, iniciarSesion, limpiarIntentos, UPLOAD_DIR };

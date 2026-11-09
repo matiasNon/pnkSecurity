@@ -1,7 +1,7 @@
 {
   "name": "pnk-carta-digital",
   "version": "1.0.0",
-  "description": "Carta digital pnkSecurity en Node.js + Express + PostgreSQL (MVC, Docker, 3 ambientes)",
+  "description": "Carta digital pnkSecurity: backend API REST (Node.js + Express + PostgreSQL) y frontend estatico (nginx) separados",
   "private": true,
   "license": "UNLICENSED",
   "engines": {
@@ -12,7 +12,7 @@
     "dev": "node --watch src/server.js",
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed-usuarios.js",
-    "lint": "eslint src scripts tests",
+    "lint": "eslint src scripts tests frontend/public/js/app",
     "test": "jest --runInBand",
     "test:e2e": "playwright test",
     "audit": "npm audit --omit=dev --audit-level=high",
@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "connect-pg-simple": "^10.0.0",
-    "ejs": "^7.0.2",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "helmet": "^8.0.0",
