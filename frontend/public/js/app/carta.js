@@ -8,7 +8,7 @@
   const { el, agregar, vaciar, conSaltos, moneda, urlSegura, icono, pedir, cargarSesion, estado, paginaError, ridDeUrl } = window.PNK;
   const FOTO_PRODUCTO = '/imagenes/producto.jpg';
   const ROTACION_MS = 6000;
-  const BANNERS = ['principales', 'entradas', 'bebidas', 'vinos'];
+  const BANNERS = ['principales', 'entradas', 'pizzas', 'bebidas', 'postres', 'vinos', 'helados', 'dulces'];
   const sinMovimiento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const rid = ridDeUrl();
