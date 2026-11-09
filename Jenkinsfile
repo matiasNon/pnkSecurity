@@ -135,7 +135,8 @@ pipeline {
             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
               // Cruza las dependencias con la base NVD (CVE y CWE que administra MITRE). Falla con CVSS >= 7.
               sh '''
-                docker run --rm --volumes-from $JENKINS_CONTAINER -w "$WORKSPACE" -v odc_data:/usr/share/dependency-check/data \
+                mkdir -p reports/seguridad/dependency-check
+                docker run --rm -u root --volumes-from $JENKINS_CONTAINER -w "$WORKSPACE" -v odc_data:/usr/share/dependency-check/data \
                   owasp/dependency-check:latest --scan package-lock.json --format ALL --out reports/seguridad/dependency-check \
                   --failOnCVSS 7 --nvdApiKey "$(cat $SECRETOS/nvd_api_key)" --project carta-digital-pnk
               '''
