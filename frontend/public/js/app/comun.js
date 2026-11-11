@@ -145,11 +145,11 @@
   function paginaError(titulo) {
     document.title = titulo;
     const app = vaciar(document.getElementById('app'));
-    agregar(app, [el('div', { class: 'container contendor text-center' },
-      el('br'), el('br'),
-      el('img', { class: 'logosintituciones', src: '/img/logo.png', width: '170px', alt: '' }),
-      el('h1', { class: 'mt-4', text: titulo }),
-      el('p', {}, el('a', { href: '/', text: 'Volver al inicio' })))]);
+    agregar(app, [el('main', { class: 'cm-error' }, el('div', { class: 'cm-error-caja' },
+      el('img', { class: 'cm-pie-logo', src: '/img/logo.png', width: '150', height: '42', alt: 'PNK' }),
+      el('h1', { text: titulo }),
+      el('p', { text: 'Revisa la dirección o vuelve a la carta.' }),
+      el('a', { class: 'cm-btn cm-btn-verde', href: '/', text: 'Volver al inicio' })))]);
   }
 
   // Id del restaurante desde la URL (/restaurantes/:id[/carrito]); el backend lo vuelve a validar.

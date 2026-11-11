@@ -1,39 +1,57 @@
 // Pagina del carrito (/restaurantes/:id/carrito): GET /api/restaurantes/:id/carrito; eliminar con DELETE.
+// Diseño moderno (carta-moderna.css + carrito-moderno.css): mismo encabezado y pie que la carta.
 (function () {
   'use strict';
   const { el, agregar, vaciar, moneda, urlSegura, icono, pedir, cargarSesion, paginaError, ridDeUrl } = window.PNK;
   const rid = ridDeUrl();
 
-  function pieCarrito() {
-    return el('footer', { class: 'container contendor' }, el('br'), el('hr'),
-      el('div', { class: 'container' }, el('div', { class: 'footer-bottom row align-items-center text-center' },
-        el('p', { class: 'footer-text m-0 col-md-12' },
-          'Copyright 2020, Todos los Derechos reservados PNK, ', el('br'),
-          'Sitio desarrollado para la Explotación de Vulnerabilidades Web, Laboratorio de Programación Segura I', el('br'),
-          el('b', { text: 'Área Tecnologías de Información y Ciberseguridad - Inacap Sede La Serena' }), el('br'), el('br')))));
+  function encabezado(rest) {
+    return el('header', { class: 'cm-header' }, el('div', { class: 'cm-contenedor cm-header-fila' },
+      el('a', { class: 'cm-logo', href: `/restaurantes/${rid}`, 'aria-label': `Inicio de ${rest.nombre}` },
+        el('img', { src: '/img/logo.png', alt: 'PNK', width: '150', height: '42' })),
+      el('div', { class: 'cm-header-acciones' },
+        el('a', { class: 'cm-btn cm-btn-claro volver', href: `/restaurantes/${rid}` },
+          el('i', { class: 'ti-arrow-left', 'aria-hidden': 'true' }), ' Volver a la Carta'))));
   }
 
-  function filas(items, cuerpo, total) {
-    vaciar(cuerpo);
-    total.textContent = moneda(items.reduce((s, p) => s + p.precio, 0));
+  function pieModerno() {
+    return el('footer', { class: 'cm-pie' }, el('div', { class: 'cm-contenedor' },
+      el('img', { src: '/img/logo.png', alt: 'PNK', width: '120', height: '34', class: 'cm-pie-logo' }),
+      el('p', {}, 'Copyright 2020, Todos los Derechos reservados PNK.', el('br'),
+        'Sitio desarrollado para la Explotación de Vulnerabilidades Web, Laboratorio de Programación Segura I', el('br'),
+        el('b', { text: 'Área Tecnologías de Información y Ciberseguridad - Inacap Sede La Serena' }))));
+  }
+
+  // Pinta las filas, el total, el contador y el aviso del garzon (solo si hay productos).
+  function filas(items, ui) {
+    vaciar(ui.cuerpo);
+    const suma = moneda(items.reduce((s, p) => s + p.precio, 0));
+    ui.total.textContent = suma;
+    ui.totalResumen.textContent = suma;
+    ui.cantidad.textContent = items.length === 1 ? '1 producto' : `${items.length} productos`;
+    ui.listo.classList.toggle('car-oculto', items.length === 0);
     if (items.length === 0) {
-      cuerpo.appendChild(el('tr', {}, el('td', { colspan: 4, class: 'vacio', text: 'Tu carrito está vacío. Vuelve a la carta y elige tus productos.' })));
+      ui.cuerpo.appendChild(el('tr', { class: 'car-fila-vacia' }, el('td', { colspan: 4 },
+        el('div', { class: 'car-vacio' },
+          el('i', { class: 'ti-shopping-cart car-vacio-icono', 'aria-hidden': 'true' }),
+          el('p', { class: 'vacio', text: 'Tu carrito está vacío. Vuelve a la carta y elige tus productos.' }),
+          el('a', { class: 'cm-btn cm-btn-verde', href: `/restaurantes/${rid}`, text: 'Ver la carta' })))));
     }
     for (const p of items) {
-      cuerpo.appendChild(el('tr', {},
-        el('th', { scope: 'row', text: p.id }),
-        el('td', { text: p.nombre }),
-        el('td', { text: moneda(p.precio) }),
-        el('td', {}, el('a', {
-          class: 'elim', id: String(p.posicion), href: '#', 'aria-label': `Eliminar ${p.nombre}`,
-          onclick: async (e) => { e.preventDefault(); await pedir('DELETE', `/api/restaurantes/${rid}/carrito/items/${p.posicion}`); recargar(cuerpo, total); },
+      ui.cuerpo.appendChild(el('tr', {},
+        el('th', { scope: 'row', class: 'car-codigo' }, el('span', { class: 'car-chip', text: `#${p.id}` })),
+        el('td', { class: 'car-nombre', text: p.nombre }),
+        el('td', { class: 'car-precio', text: moneda(p.precio) }),
+        el('td', { class: 'car-accion' }, el('a', {
+          class: 'elim car-eliminar', id: String(p.posicion), href: '#', role: 'button', 'aria-label': `Eliminar ${p.nombre}`,
+          onclick: async (e) => { e.preventDefault(); await pedir('DELETE', `/api/restaurantes/${rid}/carrito/items/${p.posicion}`); recargar(ui); },
         }, icono('basura')))));
     }
   }
 
-  async function recargar(cuerpo, total) {
+  async function recargar(ui) {
     const r = await pedir('GET', `/api/restaurantes/${rid}/carrito`);
-    if (r.ok) filas(r.datos.items, cuerpo, total);
+    if (r.ok) filas(r.datos.items, ui);
   }
 
   async function iniciar() {
@@ -43,37 +61,52 @@
     if (r.status === 404) return paginaError('Restaurante no encontrado');
     if (!r.ok) return paginaError('Ha ocurrido un error. Intente nuevamente más tarde.');
     const rest = r.datos.restaurante;
-    document.title = rest.nombre;
+    document.title = `Tu pedido · ${rest.nombre}`;
 
-    const cuerpo = el('tbody');
-    const total = el('td', { class: 'price-tag', text: moneda(0) });
-    const limpiar = el('a', {
-      class: 'limpiar', href: '#', text: 'Eliminar Todo',
-      onclick: async (e) => { e.preventDefault(); await pedir('DELETE', `/api/restaurantes/${rid}/carrito`); recargar(cuerpo, total); },
+    const ui = {
+      cuerpo: el('tbody'),
+      total: el('td', { class: 'price-tag car-total', text: moneda(0) }),
+      totalResumen: el('span', { class: 'car-resumen-total', text: moneda(0) }),
+      cantidad: el('span', { class: 'car-cantidad', text: '0 productos' }),
+      listo: el('p', { class: 'car-listo' }, el('i', { class: 'ti-bell', 'aria-hidden': 'true' }),
+        ' ¿Listo con tu pedido? Llama al garzón para solicitarlo.'),
+    };
+    ui.limpiar = el('a', {
+      class: 'limpiar cm-btn car-btn-limpiar', href: '#', text: 'Eliminar Todo',
+      onclick: async (e) => { e.preventDefault(); await pedir('DELETE', `/api/restaurantes/${rid}/carrito`); recargar(ui); },
     });
 
+    const titulo = el('section', { class: 'car-titulo' }, el('div', { class: 'cm-contenedor car-titulo-fila' },
+      el('img', { class: 'car-foto-rest', src: urlSegura(rest.foto, '/img/logo_empresa_comodin.png'), alt: '', width: '72', height: '72' }),
+      el('div', {},
+        el('span', { class: 'cm-chip', text: 'Tu pedido' }),
+        el('h1', { class: 'car-h1', text: 'Productos Agregados para Solicitar' }),
+        el('p', { class: 'car-sub', text: rest.nombre }))));
+
+    const tabla = el('div', { class: 'car-tarjeta' }, el('div', { class: 'table-responsive' },
+      el('table', { class: 'table car-tabla' },
+        el('thead', {}, el('tr', {},
+          el('th', { scope: 'col', text: 'Código' }), el('th', { scope: 'col', text: 'Producto' }),
+          el('th', { scope: 'col', text: 'Precio' }), el('th', { scope: 'col', class: 'car-accion', text: 'Acción' }))),
+        ui.cuerpo,
+        el('tfoot', {}, el('tr', { class: 'fila-total' }, el('td', {}), el('th', { scope: 'row', text: 'Total' }), ui.total, el('td', {}))))));
+
+    const resumen = el('aside', { class: 'car-resumen', 'aria-label': 'Resumen del pedido' },
+      el('h2', { class: 'car-resumen-titulo', text: 'Resumen' }),
+      el('div', { class: 'car-resumen-linea' }, el('span', { text: 'Cantidad' }), ui.cantidad),
+      el('div', { class: 'car-resumen-linea car-resumen-linea-total' }, el('span', { text: 'Total' }), ui.totalResumen),
+      ui.listo,
+      el('div', { class: 'car-resumen-acciones' },
+        el('a', { class: 'cm-btn cm-btn-verde', href: `/restaurantes/${rid}`, text: 'Seguir eligiendo' }),
+        ui.limpiar));
+
     agregar(vaciar(document.getElementById('app')), [
-      el('section', {}, el('div', { class: 'container contendor' }, el('div', { class: 'row' },
-        el('div', { class: 'col-lg-4' }, el('div', { class: 'centrado' },
-          el('div', { class: 'media' }, el('img', { class: 'logosintituciones', src: '/img/logo.png', width: '170px', alt: '' })), el('br'), el('br'))),
-        el('div', { class: 'col-lg-4' }, el('div', { class: 'centrado' },
-          el('img', { class: 'logosintituciones', src: urlSegura(rest.foto, '/img/logo_empresa_comodin.png'), width: '170px', alt: '' }))),
-        el('div', { class: 'col-lg-4' }, el('div', { class: 'carro' }, el('div', { class: 'media float-right' },
-          el('a', { class: 'volver', href: `/restaurantes/${rid}`, text: 'Volver a la Carta' }), '  ', limpiar)))))),
-      el('section', {}, el('div', { class: 'container contendor' }, el('div', { class: 'row' }, el('div', { class: 'col-lg-12' },
-        el('h4', { class: 'intro-title centrado', text: 'Productos Agregados para Solicitar' }))))),
-      el('section', {}, el('div', { class: 'container contendor' }, el('div', { class: 'row' }, el('div', { class: 'col-lg-12' },
-        el('div', { class: 'table-responsive' }, el('table', { class: 'table table-hover table-lg' },
-          el('thead', {}, el('tr', {},
-            el('th', { scope: 'col', text: 'Código' }), el('th', { scope: 'col', text: 'Producto' }),
-            el('th', { scope: 'col', text: 'Precio' }), el('th', { scope: 'col', text: 'Acción' }))),
-          cuerpo,
-          el('tfoot', {}, el('tr', { class: 'fila-total' }, el('td', {}), el('th', { scope: 'row', text: 'Total' }), total, el('td', {}))))),
-        el('div', {}, el('hr'), el('br'),
-          el('h3', { class: 'price-tag text-center', text: '¡¡¡Si estas listo con tu pedido, llama al garzón para solicitarlo!!!' })))))),
-      pieCarrito(),
+      encabezado(rest),
+      titulo,
+      el('main', { class: 'cm-seccion car-main' }, el('div', { class: 'cm-contenedor car-grilla' }, tabla, resumen)),
+      pieModerno(),
     ]);
-    filas(r.datos.items, cuerpo, total);
+    filas(r.datos.items, ui);
     return null;
   }
 

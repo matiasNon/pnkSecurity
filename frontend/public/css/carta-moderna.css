@@ -597,3 +597,23 @@ a.button.cm-btn { padding-top: 0; padding-bottom: 0; text-transform: none; }
 	line-height: 1;
 }
 @media (prefers-reduced-motion: reduce) { .cm-portada img { transition: none; } }
+
+/* ---------- Pagina de error (comun.js paginaError) ---------- */
+.cm-error {
+	flex: 1 0 auto;
+	display: grid;
+	place-items: center;
+	padding: 48px 20px;
+	text-align: center;
+}
+.cm-error-caja {
+	background: #fff;
+	border: 1px solid var(--cm-borde);
+	border-radius: var(--cm-radio);
+	box-shadow: var(--cm-sombra);
+	padding: 36px 32px;
+	max-width: 460px;
+	width: 100%;
+}
+.cm-error-caja h1 { font-size: clamp(24px, 3.6vw, 32px); font-weight: 900; color: var(--cm-azul); margin: 18px 0 10px; }
+.cm-error-caja p { color: var(--cm-texto-suave); margin: 0 0 20px; }
