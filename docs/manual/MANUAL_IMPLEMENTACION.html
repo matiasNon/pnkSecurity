@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Manual de implementación · Carta Digital PNK</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  :root { --azul: #0b3d6b; --azul-900: #082a4a; --azul-100: #e6f0fa; --verde: #15803d; --texto: #10243a; --suave: #4a5d73; --borde: #cfdbe8; --rojo: #b91c1c; --ambar: #92400e; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: var(--texto); font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  h1 { font-size: 26pt; color: #fff; margin: 0 0 6px; line-height: 1.1; }
+  h2 { font-size: 15pt; color: var(--azul); border-bottom: 2px solid var(--azul-100); padding-bottom: 4px; margin: 22px 0 10px; break-after: avoid; }
+  h3 { font-size: 11.5pt; color: var(--azul-900); margin: 16px 0 6px; break-after: avoid; }
+  p { margin: 0 0 8px; }
+  code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 9pt; background: var(--azul-100); padding: 1px 4px; border-radius: 4px; }
+  pre { font-family: "JetBrains Mono", Consolas, monospace; font-size: 8.6pt; background: #0f2236; color: #e6f0fa; padding: 10px 12px; border-radius: 8px; white-space: pre-wrap; word-break: break-all; margin: 6px 0 10px; break-inside: avoid; }
+  pre .c { color: #8fb3d6; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 9.4pt; break-inside: auto; }
+  th { background: var(--azul-100); color: var(--azul); text-align: left; padding: 6px 8px; font-size: 8.6pt; text-transform: uppercase; letter-spacing: .03em; }
+  td { border-top: 1px solid var(--borde); padding: 5px 8px; vertical-align: top; }
+  tr { break-inside: avoid; }
+  .portada { background: linear-gradient(135deg, var(--azul-900), var(--azul) 60%, #1565a8); color: #fff; padding: 40px 34px 34px; border-radius: 14px; margin-bottom: 18px; }
+  .portada .sobre { text-transform: uppercase; letter-spacing: .14em; font-size: 9pt; color: #9fd8b3; font-weight: 700; margin-bottom: 10px; }
+  .portada p { color: #cfe0f2; margin: 0; }
+  .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+  .meta div { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-radius: 10px; padding: 8px 10px; font-size: 9pt; }
+  .meta b { display: block; color: #fff; font-size: 10.5pt; }
+  .caja { border-radius: 10px; padding: 10px 12px; margin: 8px 0 12px; break-inside: avoid; font-size: 9.8pt; }
+  .caja.ok { background: #e9f8ef; border-left: 4px solid var(--verde); }
+  .caja.ojo { background: #fff6e5; border-left: 4px solid #d97706; }
+  .caja.mal { background: #fdecec; border-left: 4px solid var(--rojo); }
+  .paso { display: grid; grid-template-columns: 34px 1fr; gap: 10px; margin: 10px 0; break-inside: avoid; }
+  .paso .n { width: 30px; height: 30px; border-radius: 50%; background: var(--verde); color: #fff; font-weight: 800; display: grid; place-items: center; }
+  .paso h3 { margin-top: 3px; }
+  .indice { columns: 2; font-size: 10pt; margin: 0; padding-left: 18px; }
+  .salto { break-before: page; }
+  svg text { font-family: "Segoe UI", Roboto, Arial, sans-serif; }
+  .pie { color: var(--suave); font-size: 8.5pt; margin-top: 20px; border-top: 1px solid var(--borde); padding-top: 6px; }
+</style>
+</head>
+<body>
+
+<section class="portada">
+  <div class="sobre">Laboratorio de Programación Segura I · Inacap La Serena</div>
+  <h1>Manual de implementación<br>Carta Digital PNK</h1>
+  <p>Despliegue completo en AWS con alta disponibilidad (ALB + Auto Scaling + RDS + EFS) y Cloudflare, con un solo script.</p>
+  <div class="meta">
+    <div>Versión del manual<b>1.0 · 12-11-2026</b></div>
+    <div>Tiempo de despliegue<b>≈ 9-12 minutos</b></div>
+    <div>Repositorio<b>matiasNon/pnkSecurity</b></div>
+  </div>
+</section>
+
+<h2>Contenido</h2>
+<ol class="indice">
+  <li>Resumen y requisitos previos</li>
+  <li>Arquitectura</li>
+  <li>Componentes, contenedores y versiones</li>
+  <li>Despliegue en 5 pasos (script único)</li>
+  <li>Cloudflare: DNS y HTTPS (paso manual)</li>
+  <li>Verificación del ambiente</li>
+  <li>Actualizar la aplicación sin cortar el servicio</li>
+  <li>Procedimiento de parcheo ante vulnerabilidades</li>
+  <li>Borrar el ambiente y volver a desplegar</li>
+  <li>Solución de problemas</li>
+  <li>Seguridad del despliegue</li>
+</ol>
+
+<h2>1. Resumen y requisitos previos</h2>
+<p>Todo el ambiente (red, base de datos, almacenamiento, secretos, balanceador, instancias y contenedores) se crea con
+<code>infra/aws/desplegar.sh</code> sobre la plantilla CloudFormation <code>infra/aws/carta-digital.yaml</code>. Solo la configuración de
+Cloudflare es manual, como pide el requisito.</p>
+<table>
+  <tr><th>Requisito</th><th>Detalle</th></tr>
+  <tr><td>Cuenta AWS</td><td>AWS Academy Learner Lab (región <b>us-east-1</b>), con el laboratorio iniciado (<i>Start Lab</i>, luz verde). Usa el rol <code>LabRole</code> y el perfil <code>LabInstanceProfile</code>.</td></tr>
+  <tr><td>Terminal</td><td><b>AWS CloudShell</b> (ícono <code>&gt;_</code> en la consola de AWS). Ya trae AWS CLI, git, openssl y jq; no hay que instalar nada.</td></tr>
+  <tr><td>Rama del código</td><td><code>front-back-separados</code> (frontend y backend separados con la infraestructura AWS). Cuando <code>produccion</code> se actualice a esa rama, se puede usar <code>produccion</code>.</td></tr>
+  <tr><td>Dominio (opcional)</td><td><code>pnkcarta.me</code> administrado en Cloudflare (sección 5). Sin dominio la app funciona en la dirección del ALB.</td></tr>
+</table>
+
+<h2>2. Arquitectura</h2>
+<svg viewBox="0 0 760 300" width="100%" role="img" aria-label="Arquitectura">
+  <defs><marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4a5d73"/></marker></defs>
+  <rect x="5" y="115" width="90" height="56" rx="10" fill="#e6f0fa" stroke="#0b3d6b"/><text x="50" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="#0b3d6b">Visitante</text><text x="50" y="157" text-anchor="middle" font-size="10" fill="#4a5d73">navegador</text>
+  <rect x="125" y="110" width="110" height="66" rx="10" fill="#fff6e5" stroke="#d97706"/><text x="180" y="135" text-anchor="middle" font-size="12" font-weight="700" fill="#92400e">Cloudflare</text><text x="180" y="151" text-anchor="middle" font-size="9.5" fill="#4a5d73">DNS + HTTPS</text><text x="180" y="165" text-anchor="middle" font-size="9.5" fill="#4a5d73">carta.pnkcarta.me</text>
+  <rect x="265" y="105" width="120" height="76" rx="10" fill="#0b3d6b"/><text x="325" y="133" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">ALB</text><text x="325" y="149" text-anchor="middle" font-size="9.5" fill="#cfe0f2">HTTPS 443</text><text x="325" y="163" text-anchor="middle" font-size="9.5" fill="#cfe0f2">/api/* · /uploads/* → back</text><text x="325" y="175" text-anchor="middle" font-size="9.5" fill="#cfe0f2">resto → front</text>
+  <rect x="420" y="25" width="150" height="86" rx="10" fill="#e9f8ef" stroke="#15803d"/><text x="495" y="48" text-anchor="middle" font-size="12" font-weight="700" fill="#15803d">ASG frontend</text><text x="495" y="65" text-anchor="middle" font-size="9.5" fill="#4a5d73">2-3 × t3.micro (2 zonas)</text><text x="495" y="80" text-anchor="middle" font-size="9.5" fill="#4a5d73">contenedor carta-frontend</text><text x="495" y="95" text-anchor="middle" font-size="9.5" fill="#4a5d73">nginx 1.30 · :8080</text>
+  <rect x="420" y="175" width="150" height="86" rx="10" fill="#e9f8ef" stroke="#15803d"/><text x="495" y="198" text-anchor="middle" font-size="12" font-weight="700" fill="#15803d">ASG backend</text><text x="495" y="215" text-anchor="middle" font-size="9.5" fill="#4a5d73">2-3 × t3.micro (2 zonas)</text><text x="495" y="230" text-anchor="middle" font-size="9.5" fill="#4a5d73">contenedor carta-backend</text><text x="495" y="245" text-anchor="middle" font-size="9.5" fill="#4a5d73">Node 24 + Express · :3000</text>
+  <rect x="610" y="140" width="140" height="56" rx="10" fill="#e6f0fa" stroke="#0b3d6b"/><text x="680" y="163" text-anchor="middle" font-size="12" font-weight="700" fill="#0b3d6b">RDS PostgreSQL 17</text><text x="680" y="180" text-anchor="middle" font-size="9.5" fill="#4a5d73">privada · TLS · cifrada</text>
+  <rect x="610" y="215" width="140" height="56" rx="10" fill="#e6f0fa" stroke="#0b3d6b"/><text x="680" y="238" text-anchor="middle" font-size="12" font-weight="700" fill="#0b3d6b">EFS</text><text x="680" y="255" text-anchor="middle" font-size="9.5" fill="#4a5d73">fotos compartidas · TLS</text>
+  <rect x="610" y="65" width="140" height="56" rx="10" fill="#f3e8ff" stroke="#7e22ce"/><text x="680" y="88" text-anchor="middle" font-size="12" font-weight="700" fill="#6b21a8">Secrets Manager</text><text x="680" y="105" text-anchor="middle" font-size="9.5" fill="#4a5d73">claves BD, sesión, admin</text>
+  <g stroke="#4a5d73" stroke-width="1.6" fill="none" marker-end="url(#f)">
+    <path d="M95 143 H123"/><path d="M235 143 H263"/><path d="M385 130 L418 75"/><path d="M385 160 L418 215"/>
+    <path d="M570 205 L608 175"/><path d="M570 235 L608 243"/><path d="M570 195 L608 100"/>
+  </g>
+</svg>
+<p>Las instancias no tienen IP pública ni SSH; solo el ALB llega a ellas. La base de datos y EFS solo aceptan conexiones desde el
+Security Group del backend. Las sesiones y los contadores anti fuerza bruta viven en PostgreSQL, así que cualquier instancia
+atiende cualquier petición.</p>
+
+<h2>3. Componentes, contenedores y versiones</h2>
+<h3>3.1 Contenedores</h3>
+<table>
+  <tr><th>Contenedor</th><th>Imagen y origen</th><th>Ubicación en la instancia</th><th>Puerto</th></tr>
+  <tr><td><b>carta-backend</b></td><td><code>carta-backend:latest</code>, construida en cada instancia desde <code>Dockerfile</code> (etapa <code>runtime</code>)</td><td>Código: <code>/opt/carta-digital</code> · fotos: <code>/mnt/efs/uploads</code> (EFS) · CA de RDS: <code>/opt/carta-digital/rds-ca.pem</code> · log de arranque: <code>/var/log/carta-backend-arranque.log</code></td><td>3000</td></tr>
+  <tr><td><b>carta-frontend</b></td><td><code>carta-frontend:latest</code>, desde <code>frontend/Dockerfile</code> (etapa <code>aws</code>)</td><td>Código: <code>/opt/carta-digital</code> · log: <code>/var/log/carta-frontend-arranque.log</code></td><td>8080</td></tr>
+</table>
+<p>Ambos se definen en <code>docker-compose.aws.yml</code> (perfiles <code>backend</code> y <code>frontend</code>; proyecto Docker <code>carta-digital</code>) y corren
+con usuario no root, sistema de archivos de solo lectura, <code>cap_drop: ALL</code> y <code>no-new-privileges</code>.</p>
+
+<h3>3.2 Versiones</h3>
+<table>
+  <tr><th>Componente</th><th>Versión</th><th>Dónde se fija</th></tr>
+  <tr><td>Node.js (backend)</td><td>24 (imagen <code>node:24-alpine</code>; hoy 24.22)</td><td><code>Dockerfile</code></td></tr>
+  <tr><td>Express / express-session</td><td>4.22 / 1.19</td><td><code>package.json</code> + <code>package-lock.json</code></td></tr>
+  <tr><td>pg / connect-pg-simple</td><td>8.23 / 10.0</td><td>idem</td></tr>
+  <tr><td>helmet / zod / multer / pino</td><td>8.3 / 4.6 / 2.5 / 9.14</td><td>idem</td></tr>
+  <tr><td>nginx (frontend)</td><td>1.30.6 (<code>nginxinc/nginx-unprivileged:1.30-alpine</code>)</td><td><code>frontend/Dockerfile</code></td></tr>
+  <tr><td>PostgreSQL (Amazon RDS)</td><td>17 (menor vigente, p. ej. 17.9; <code>db.t3.micro</code>)</td><td><code>desplegar.sh</code> consulta la menor por defecto</td></tr>
+  <tr><td>Sistema operativo de las instancias</td><td>Ubuntu Server 24.04 LTS (última AMI de Canonical)</td><td>Parámetro <code>AmiId</code> (SSM)</td></tr>
+  <tr><td>Docker / AWS CLI</td><td>Docker CE y Compose (repositorio oficial) / AWS CLI v2</td><td>user-data de la plantilla</td></tr>
+</table>
+
+<h3>3.3 Parámetros de la plantilla (valores por defecto)</h3>
+<table>
+  <tr><th>Parámetro</th><th>Defecto</th><th>Uso</th></tr>
+  <tr><td><code>Rama</code></td><td><code>produccion</code></td><td>Rama que clona cada instancia (se pasa con <code>RAMA=</code>)</td></tr>
+  <tr><td><code>DominioPublico</code></td><td>vacío</td><td>Dominio para redirecciones (se pasa con <code>DOMINIO=</code>)</td></tr>
+  <tr><td><code>TipoInstancia</code> / <code>ClaseBd</code></td><td><code>t3.micro</code> / <code>db.t3.micro</code></td><td>Tamaño de instancias y BD</td></tr>
+  <tr><td>Frontend y backend: mín / máx</td><td>2 / 3 cada uno</td><td>Escalado por CPU (objetivo 60 %)</td></tr>
+</table>
+
+<h2 class="salto">4. Despliegue en 5 pasos (script único)</h2>
+<div class="paso"><div class="n">1</div><div><h3>Abrir CloudShell</h3>
+<p>En el Learner Lab: <i>Start Lab</i> → esperar la luz verde → botón <b>AWS</b>. En la consola, región <b>N. Virginia (us-east-1)</b> → ícono <code>&gt;_</code> (CloudShell).</p></div></div>
+<div class="paso"><div class="n">2</div><div><h3>Clonar el repositorio</h3>
+<pre>git clone --branch front-back-separados https://github.com/matiasNon/pnkSecurity.git
+cd pnkSecurity</pre></div></div>
+<div class="paso"><div class="n">3</div><div><h3>Ejecutar el script</h3>
+<pre>RAMA=front-back-separados DOMINIO=carta.pnkcarta.me bash infra/aws/desplegar.sh</pre>
+<p>El script muestra 5 etapas: credenciales → red (VPC por defecto y 2 subredes en zonas distintas) → certificado HTTPS importado a ACM
+→ stack CloudFormation → espera a que el balanceador vea las 4 instancias sanas. Tarda <b>unos 9-12 minutos</b> (RDS es lo más lento).</p>
+<div class="caja ojo"><b>Importante:</b> la variable <code>RAMA</code> es obligatoria mientras <code>produccion</code> no tenga esta versión. Sin ella, las instancias
+clonarían código antiguo sin la infraestructura separada.</div></div></div>
+<div class="paso"><div class="n">4</div><div><h3>Anotar la dirección del ALB</h3>
+<p>Al final el script imprime la URL y deja todo en <code>infra/aws/salida.env</code> (sin secretos):</p>
+<pre>cat infra/aws/salida.env      <span class="c"># ALB_DNS=carta-digital-alb-XXXX.us-east-1.elb.amazonaws.com</span></pre></div></div>
+<div class="paso"><div class="n">5</div><div><h3>Apuntar Cloudflare al ALB</h3>
+<p>Editar el CNAME <code>carta</code> en Cloudflare con el nuevo <code>ALB_DNS</code> (sección 5). Es el único paso manual.</p></div></div>
+
+<h3>Clave del administrador</h3>
+<p>Se genera al azar y se guarda en Secrets Manager (nunca en el código). Para verla:</p>
+<pre>ARN=$(aws cloudformation describe-stacks --stack-name carta-digital \
+  --query "Stacks[0].Outputs[?OutputKey=='SecretoAdminArn'].OutputValue" --output text)
+aws secretsmanager get-secret-value --secret-id "$ARN" --query SecretString --output text | jq -r .password</pre>
+<p>Usuario: <code>admin@gmail.com</code>. Panel: <code>https://carta.pnkcarta.me/admin</code>.</p>
+
+<h2 class="salto">5. Cloudflare: DNS y HTTPS (paso manual)</h2>
+<table>
+  <tr><th>#</th><th>Dónde</th><th>Qué hacer</th></tr>
+  <tr><td>1</td><td>Cloudflare → DNS → Records</td><td>CNAME <code>carta</code> → <code>ALB_DNS</code>, <b>Proxied</b> (nube naranja). Si ya existe, solo editar el destino.</td></tr>
+  <tr><td>2</td><td>Namecheap → Manage → Nameservers</td><td>Solo la primera vez: <b>Custom DNS</b> con <code>carter.ns.cloudflare.com</code> y <code>lila.ns.cloudflare.com</code>.</td></tr>
+  <tr><td>3</td><td>SSL/TLS → Overview</td><td>Modo <b>Full</b> (no "Full (strict)": el ALB usa un certificado autofirmado y daría error 526).</td></tr>
+  <tr><td>4</td><td>SSL/TLS → Edge Certificates</td><td><b>Always Use HTTPS: ON</b> y <b>Minimum TLS Version: TLS 1.2</b>.</td></tr>
+</table>
+<p>Guía detallada y verificación: <code>docs/CLOUDFLARE.md</code>.</p>
+
+<h2>6. Verificación del ambiente</h2>
+<pre>curl -sI https://carta.pnkcarta.me/                <span class="c"># 200, server: cloudflare, strict-transport-security</span>
+curl -s  https://carta.pnkcarta.me/api/health      <span class="c"># {"estado":"ok","servicio":"backend"}</span>
+curl -s  https://carta.pnkcarta.me/api/estado      <span class="c"># baseDatos.tls = true, minimoPrivilegio = true</span>
+curl -s -o /dev/null -w "%{http_code}\n" https://carta.pnkcarta.me/api/admin/productos   <span class="c"># 401 sin sesión</span></pre>
+<table>
+  <tr><th>Dirección</th><th>Qué se ve</th></tr>
+  <tr><td><code>/restaurantes/1</code></td><td>Carta pública</td></tr>
+  <tr><td><code>/restaurantes/1/carrito</code></td><td>Carrito (agregar, cambiar cantidad, quitar)</td></tr>
+  <tr><td><code>/admin</code></td><td>Panel de administración (CRUD de cartas, categorías y productos)</td></tr>
+  <tr><td><code>/api/</code></td><td>Consola del backend: estado en vivo de BD, EFS, balanceo entre instancias y CRUD</td></tr>
+  <tr><td><code>/privacidad</code></td><td>Política de privacidad y "Mis datos" (acceso, rectificación, supresión)</td></tr>
+</table>
+<div class="caja ok">En la consola <code>/api/</code> deben aparecer <b>dos instancias distintas</b> turnándose en "Balanceo de carga en vivo",
+"Cifrada con TLS ✓" en la base de datos y "Mínimo privilegio ✓" en el usuario de la app.</div>
+
+<h2 class="salto">7. Actualizar la aplicación sin cortar el servicio</h2>
+<p>Cada instancia clona la rama al arrancar. Para publicar un cambio ya subido a GitHub, se reemplazan las instancias de a una:</p>
+<pre>cd ~/pnkSecurity &amp;&amp; git pull
+bash infra/aws/actualizar.sh              <span class="c"># backend y luego frontend (≈ 10 min)</span>
+bash infra/aws/actualizar.sh backend      <span class="c"># solo una capa (≈ 5 min)</span></pre>
+<p>Se usa en vez de <i>instance refresh</i> porque AWS Academy lo bloquea. Si cambió la <b>plantilla</b> (<code>carta-digital.yaml</code>), primero se
+vuelve a ejecutar <code>desplegar.sh</code> con las mismas variables (actualiza el stack sin borrar datos) y después <code>actualizar.sh</code>.</p>
+<p>La pipeline de Jenkins (<code>Jenkinsfile</code>) hace lo mismo automáticamente desde la rama <code>produccion</code>, solo si pasan lint, SAST, las pruebas
+Jest y Playwright y el filtro de seguridad (Gitleaks, npm audit + OSV, librerías deprecadas, OWASP Dependency-Check, Trivy y OWASP ZAP).</p>
+
+<h2>8. Procedimiento de parcheo ante vulnerabilidades</h2>
+<table>
+  <tr><th>Qué se parcha</th><th>Cómo se detecta</th><th>Cómo se corrige y despliega</th></tr>
+  <tr><td>Dependencias de Node (npm)</td><td><code>npm audit --omit=dev</code>, OSV-Scanner, OWASP Dependency-Check (pipeline)</td><td><code>npm update &lt;paquete&gt;</code> o subir la versión en <code>package.json</code> → <code>npm install</code> → pruebas (<code>scripts/qa.sh</code>) → commit y push → <code>actualizar.sh backend</code></td></tr>
+  <tr><td>Paquetes del sistema de las imágenes (Alpine)</td><td>Trivy (pipeline) sobre <code>carta-backend</code> y <code>carta-frontend</code></td><td>Las imágenes se reconstruyen en cada instancia nueva y el frontend ejecuta <code>apk upgrade</code> al construirse: basta con <code>actualizar.sh</code></td></tr>
+  <tr><td>Versión de nginx o de Node</td><td>Trivy marca el paquete <code>nginx</code> o <code>node</code></td><td>Cambiar la etiqueta base (p. ej. <code>1.30-alpine</code> → siguiente estable) en el Dockerfile → pruebas → push → <code>actualizar.sh</code></td></tr>
+  <tr><td>Sistema operativo de las instancias</td><td>Boletines de Ubuntu</td><td>Las instancias nuevas usan la última AMI de Ubuntu 24.04 (parámetro SSM): <code>actualizar.sh</code> las reemplaza ya parchadas</td></tr>
+  <tr><td>PostgreSQL (RDS)</td><td>Avisos de RDS / versión menor nueva</td><td>Consola RDS → Modificar → versión menor 17.x (aplicar en la ventana de mantenimiento)</td></tr>
+  <tr><td>Secretos expuestos</td><td>Gitleaks (pipeline)</td><td>Rotar en Secrets Manager y reemplazar las instancias (<code>actualizar.sh</code>); el rol de la BD se re-aplica en cada arranque</td></tr>
+</table>
+<div class="caja ojo"><b>Reversión:</b> <code>git revert &lt;commit&gt;</code> → push → <code>actualizar.sh</code>. Como el reemplazo es de a una instancia, el sitio sigue
+atendiendo durante el parche y la reversión.</div>
+
+<h2>9. Borrar el ambiente y volver a desplegar</h2>
+<pre>bash infra/aws/destruir.sh                 <span class="c"># pide escribir BORRAR; ≈ 6-8 min</span>
+RAMA=front-back-separados DOMINIO=carta.pnkcarta.me bash infra/aws/desplegar.sh   <span class="c"># ≈ 9-12 min</span></pre>
+<p><code>destruir.sh</code> elimina el stack completo (instancias, ALB, RDS sin respaldo final, EFS, secretos, Security Groups), el grupo de registros
+de CloudWatch y el certificado de ACM. Después de volver a desplegar, <b>el ALB tiene otro nombre</b>: actualizar el CNAME <code>carta</code> en Cloudflare
+(sección 5, paso 1). La base vuelve a los datos iniciales de las migraciones.</p>
+
+<h2>10. Solución de problemas</h2>
+<table>
+  <tr><th>Síntoma</th><th>Causa probable</th><th>Qué hacer</th></tr>
+  <tr><td>503 justo después de desplegar o de <i>Start Lab</i></td><td>Las instancias están instalando Docker, construyendo imágenes o esperando a RDS</td><td>Esperar 10-20 min; en EC2 → Target Groups se ve cuándo quedan <i>healthy</i></td></tr>
+  <tr><td>CloudShell: <code>ExpiredToken</code> o acceso denegado</td><td>Sesión del laboratorio vencida (≈ 4 h)</td><td>Volver a abrir la consola desde el botón AWS del Learner Lab</td></tr>
+  <tr><td>El dominio da error 522/523</td><td>CNAME apuntando a un ALB que ya no existe</td><td>Actualizar el CNAME con <code>ALB_DNS</code> de <code>salida.env</code></td></tr>
+  <tr><td>Error 526 en Cloudflare</td><td>SSL en modo "Full (strict)"</td><td>Cambiar a "Full"</td></tr>
+  <tr><td>No se puede iniciar sesión</td><td>Se entró por <code>http://</code> o por otra dirección</td><td>Usar <code>https://carta.pnkcarta.me</code> (la cookie es <i>Secure</i>)</td></tr>
+  <tr><td>Consola: "NFS sin TLS" o "Con privilegios de administración"</td><td>Se activó un respaldo automático en el arranque</td><td>EC2 → instancia del backend → Actions → Monitor and troubleshoot → <b>Get system log</b> y buscar las líneas "AVISO" (es la misma salida de <code>/var/log/carta-backend-arranque.log</code>)</td></tr>
+  <tr><td><code>desplegar.sh</code> falla en el stack</td><td>Permiso no disponible en el laboratorio o nombre en uso</td><td>CloudFormation → Events muestra el recurso; corregir y ejecutar de nuevo (es idempotente)</td></tr>
+</table>
+
+<h2>11. Seguridad del despliegue</h2>
+<table>
+  <tr><th>Control</th><th>Implementación</th></tr>
+  <tr><td>Cifrado en tránsito</td><td>Cloudflare (Let's Encrypt) → ALB HTTPS → RDS con TLS verificado contra la CA de AWS; EFS por túnel TLS; HSTS</td></tr>
+  <tr><td>Cifrado en reposo</td><td>RDS, EFS y discos EBS cifrados</td></tr>
+  <tr><td>Red</td><td>Security Groups por capa: solo el ALB llega a las instancias; solo el backend llega a RDS y EFS; sin SSH</td></tr>
+  <tr><td>Secretos</td><td>Secrets Manager (5 secretos generados al azar); el archivo de entorno vive solo en la instancia (permisos de root)</td></tr>
+  <tr><td>Mínimo privilegio</td><td>La app usa el rol <code>carta_app</code> (solo lectura y escritura de datos); el usuario maestro solo migra al arrancar</td></tr>
+  <tr><td>Instancias</td><td>IMDSv2 obligatorio con salto 1 (los contenedores no leen las credenciales de la instancia)</td></tr>
+  <tr><td>Registros</td><td>CloudWatch Logs <code>/carta-digital/backend</code> con retención de 30 días</td></tr>
+  <tr><td>Evidencia</td><td><code>docs/MATRIZ_ASVS_ISO.md</code>, <code>docs/REVISION_SSDLC_PRIVACIDAD.md</code>, <code>docs/PENTEST_OWASP_ASVS5.md</code></td></tr>
+</table>
+
+<p class="pie">Carta Digital PNK · Manual de implementación v1.0 · Generado desde <code>docs/manual/MANUAL_IMPLEMENTACION.html</code> del repositorio.</p>
+</body>
+</html>
