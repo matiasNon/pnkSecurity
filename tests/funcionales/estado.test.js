@@ -22,6 +22,9 @@ describe('Consola del backend', () => {
     for (const k of ['cartas', 'categorias', 'productos']) {
       expect(Number.isInteger(res.body.baseDatos.conteos[k])).toBe(true);
     }
+    // Sin version del runtime (fingerprinting, ASVS v5 V13): hallazgo del pentest del 11-11-2026.
+    expect(res.body.node).toBeUndefined();
+    expect(JSON.stringify(res.body)).not.toMatch(/v\d+\.\d+\.\d+/);
     const crudo = JSON.stringify(res.body);
     for (const secreto of [env.cfg.DB_HOST, env.cfg.DB_USER, env.cfg.DB_PASSWORD, env.cfg.SESSION_SECRET]) {
       expect(crudo).not.toContain(secreto);
@@ -62,6 +65,12 @@ describe('Consola del backend', () => {
     const res = await request(env.app).get(ruta);
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(tipo);
+  });
+
+  test('OPTIONS responde 405 sin cabeceras CORS (pentest 11-11-2026)', async () => {
+    const res = await request(env.app).options('/api/restaurantes/1').set('Origin', 'https://evil.example');
+    expect(res.status).toBe(405);
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
   });
 
   test('no se puede salir del directorio de la consola', async () => {

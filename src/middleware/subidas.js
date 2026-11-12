@@ -18,6 +18,46 @@ function detectarTipo(buf) {
   return null;
 }
 
+// Validacion de ESTRUCTURA (ASVS v5 V5: el contenido debe ser consistente con el tipo), no solo de la firma inicial:
+// un archivo que empieza como JPEG pero es un script o HTML ("poliglota") se rechaza. Sin dependencias nativas.
+// Solo secuencias largas (5+ caracteres): en datos binarios aleatorios su probabilidad es despreciable (sin falsos positivos).
+const MARCADO_PELIGROSO = /<\?php|<script|<html|<svg|<iframe|<body|javascript:/i;
+
+function estructuraValida(tipo, buf) {
+  const n = buf.length;
+  if (tipo === 'jpg') {
+    // SOI al inicio y una cadena de segmentos bien formada hasta el inicio de los datos (SOS). No se exige el EOI al
+    // final: algunos celulares agregan metadatos despues de el.
+    let i = 2;
+    while (i + 4 <= n && buf[i] === 0xff) {
+      const marca = buf[i + 1];
+      if (marca === 0xda) return true; // inicio de los datos de la imagen
+      const largo = buf.readUInt16BE(i + 2);
+      if (largo < 2) return false;
+      i += 2 + largo;
+    }
+    return false;
+  }
+  if (tipo === 'png') {
+    // Primer bloque IHDR de 13 bytes y bloque IEND al final.
+    return n > 45 && buf.subarray(12, 16).toString('latin1') === 'IHDR' && buf.readUInt32BE(8) === 13
+      && buf.subarray(n - 8, n - 4).toString('latin1') === 'IEND';
+  }
+  if (tipo === 'gif') return n > 13 && buf[n - 1] === 0x3b; // terminador del GIF
+  if (tipo === 'webp') {
+    // El tamano declarado en la cabecera RIFF coincide con el archivo y hay un bloque VP8/VP8L/VP8X.
+    return n > 20 && buf.readUInt32LE(4) + 8 === n && /^VP8[ LX]$/.test(buf.subarray(12, 16).toString('latin1'));
+  }
+  return false;
+}
+
+function imagenValida(buf) {
+  const tipo = detectarTipo(buf);
+  if (!tipo || !estructuraValida(tipo, buf)) return null;
+  if (MARCADO_PELIGROSO.test(buf.toString('latin1'))) return null;
+  return tipo;
+}
+
 function crearSubidas(cfg) {
   const carga = multer({
     storage: multer.memoryStorage(),
@@ -41,7 +81,7 @@ function crearSubidas(cfg) {
   async function guardarFoto(req, restauranteId) {
     if (req.errorSubida) throw new Error(req.errorSubida);
     if (!req.file || req.file.size === 0) return null;
-    const tipo = detectarTipo(req.file.buffer);
+    const tipo = imagenValida(req.file.buffer);
     if (!tipo) throw new Error('La foto debe ser una imagen JPG, PNG, GIF o WEBP valida');
     const nombre = `${crypto.randomBytes(16).toString('hex')}.${tipo}`;
     const dir = path.resolve(cfg.UPLOAD_DIR, `cod${Number(restauranteId)}`);
@@ -60,4 +100,4 @@ function crearSubidas(cfg) {
   return { recibir, guardarFoto, borrarFoto };
 }
 
-module.exports = { crearSubidas, detectarTipo };
+module.exports = { imagenValida, crearSubidas, detectarTipo };

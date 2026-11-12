@@ -9,6 +9,12 @@ const SIN_CONTROL = /^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]*$/;
 const texto = (max, { min = 0 } = {}) =>
   z.string().trim().min(min).max(max).regex(SIN_CONTROL, 'Caracteres no permitidos');
 
+// Nombres (una sola linea): ademas rechaza saltos de linea y tabuladores (CR/LF), que nunca son legitimos en un nombre
+// y servirian para falsear registros o cabeceras si el valor llegara a usarse fuera de la app (pentest 11-11-2026).
+const UNA_LINEA = /^[^\x00-\x1F\x7F]*$/;
+const linea = (max, { min = 1 } = {}) =>
+  z.string().trim().min(min).max(max).regex(UNA_LINEA, 'Caracteres no permitidos');
+
 // Casilla de verificacion HTML: llega "on" si esta marcada y no llega si no.
 const casilla = z.preprocess((v) => v === 'on' || v === '1' || v === 'true', z.boolean());
 
@@ -24,20 +30,20 @@ const textoOpcional = (max) =>
   z.preprocess((v) => (v == null || String(v).trim() === '' ? null : v), texto(max).nullable());
 
 const esquemaCarta = z.object({
-  nombre: texto(45, { min: 1 }),
+  nombre: linea(45),
   orden: enteroOpcional(0, 9999),
   visible: casilla,
 });
 
 const esquemaCategoria = z.object({
-  nombre: texto(100, { min: 1 }),
+  nombre: linea(100),
   orden: enteroOpcional(0, 9999),
   visible: casilla,
   carta_id: enteroEntre(1, 2147483647),
 });
 
 const esquemaItem = z.object({
-  nombre: texto(100, { min: 1 }),
+  nombre: linea(100),
   descripcion: textoOpcional(300),
   tiempo: textoOpcional(100),
   observaciones: textoOpcional(300),
@@ -63,4 +69,5 @@ function validar(esquema, entrada) {
   return { errores };
 }
 
-module.exports = { esquemaCarta, esquemaCategoria, esquemaItem, validar };
+module.exports = {
+  linea, esquemaCarta, esquemaCategoria, esquemaItem, validar };

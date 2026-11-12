@@ -63,6 +63,8 @@ describe('Rectificacion: PATCH /api/mi-cuenta', () => {
     ['vacio', { nombre: '   ' }],
     ['demasiado largo', { nombre: 'x'.repeat(101) }],
     ['caracteres de control', { nombre: 'Ana\u0000' }],
+    ['salto de linea CR/LF (pentest)', { nombre: 'Ana\r\nX-Inyectada: 1' }],
+    ['tabulador', { nombre: 'Ana\tB' }],
     ['campos extra (no se puede cambiar el rol ni el email)', { nombre: 'Ana', rol: 'admin' }],
   ])('rechaza %s con 400', async (_n, cuerpo) => {
     const c = await cuentaNueva();

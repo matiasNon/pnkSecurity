@@ -62,7 +62,6 @@
       texto('v-nodo', d.nodo);
       texto('v-activo', duracion(d.activoSegundos));
       texto('v-version', `v${d.version}`);
-      texto('v-node', d.node);
 
       const bd = d.baseDatos;
       marcar('t-bd', bd.ok ? 'ok' : 'error');

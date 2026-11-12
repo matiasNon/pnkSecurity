@@ -73,7 +73,6 @@ function crearControladorEstado({ cfg, pool }) {
         estado: ok ? 'ok' : 'degradado',
         nodo,
         version,
-        node: process.version,
         ambiente: cfg.esProd ? 'produccion' : 'desarrollo',
         activoSegundos: Math.floor((Date.now() - inicio) / 1000),
         hora: new Date().toISOString(),

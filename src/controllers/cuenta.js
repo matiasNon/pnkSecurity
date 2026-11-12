@@ -8,9 +8,10 @@ const { verificarPassword } = require('../services/password');
 const { reservarLogin, liberarLogin } = require('../services/throttle');
 const { logSeguridad } = require('../services/logSeguridad');
 
-const SIN_CONTROL = /^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]*$/;
+const { linea } = require('../utils/formularios');
+
 const esquemaNombre = z.object({
-  nombre: z.string().trim().min(1).max(100).regex(SIN_CONTROL),
+  nombre: linea(100),
 }).strict();
 const esquemaSupresion = z.object({
   password: z.string().min(1).max(128),

@@ -34,6 +34,10 @@ function crearApp({ cfg, pool }) {
 
   app.use(ipRealCloudflare(cfg));
   app.use(cabecerasSeguridad());
+  // Mismo origen (sin CORS): la API no necesita OPTIONS/preflight; se responde 405 en vez de anunciar metodos.
+  app.use((req, res, next) => (req.method === 'OPTIONS'
+    ? res.status(405).set('Allow', 'GET, HEAD, POST, PUT, PATCH, DELETE').json({ error: 'Metodo no permitido', codigo: 'metodo' })
+    : next()));
 
   // Salud para Docker, el health check del balanceador y la pipeline: sin sesion y sin redireccion a HTTPS.
   const salud = async (req, res) => {
