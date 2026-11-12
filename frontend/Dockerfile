@@ -4,12 +4,15 @@
 #   aws   -> solo estaticos; el balanceador (ALB) envia /api/* y /uploads/* directo al Auto Scaling Group del backend.
 #   local -> ademas reenvia /api y /uploads al servicio "backend" de docker compose (dev, QA, CI y EC2 unica).
 
-FROM nginxinc/nginx-unprivileged:1.28-alpine AS aws
+FROM nginxinc/nginx-unprivileged:1.30-alpine AS aws
 COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY nginx/cabeceras.inc /etc/nginx/cabeceras.inc
 COPY public /usr/share/nginx/html
 USER root
-RUN mkdir -p /etc/nginx/extra && chmod -R a+rX,go-w /usr/share/nginx/html /etc/nginx
+# Parches del sistema al construir (Trivy en el pipeline bloquea CVE HIGH/CRITICAL con arreglo disponible): la imagen
+# queda al dia aunque la base en cache sea antigua. Procedimiento de parcheo: reconstruir y redesplegar (actualizar.sh).
+RUN apk upgrade --no-cache \
+ && mkdir -p /etc/nginx/extra && chmod -R a+rX,go-w /usr/share/nginx/html /etc/nginx
 USER 101
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \

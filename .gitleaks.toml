@@ -8,6 +8,7 @@ paths = [
   '''\.env\.dev$''',
   '''\.env\.qa$''',
   '''\.env\.prod\.example$''',
+  '''\.env\.aws\.example$''',
   '''docs/''',
   '''tests/''',
   '''scripts/seed-usuarios\.js$''',

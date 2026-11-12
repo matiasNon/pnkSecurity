@@ -83,6 +83,17 @@ Resources:
         PasswordLength: 32
         ExcludePunctuation: true
 
+  # Rol de la APLICACION con minimo privilegio (lo crea scripts/preparar-bd.js con el usuario maestro).
+  SecretoBdApp:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Usuario y clave del rol de la app en RDS (sin DDL ni privilegios de administracion)
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"carta_app"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+
   SecretoApp:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -364,7 +375,7 @@ Resources:
 
               # 1) Docker, cliente NFS y AWS CLI
               apt-get update -y
-              apt-get install -y ca-certificates curl git unzip nfs-common jq
+              apt-get install -y ca-certificates curl git unzip nfs-common jq stunnel4
               install -m 0755 -d /etc/apt/keyrings
               curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
               . /etc/os-release
@@ -379,11 +390,54 @@ Resources:
               cd "$DIR"
               docker compose -p carta-digital -f docker-compose.aws.yml --profile backend build
 
-              # 3) Fotos compartidas: EFS en /mnt/efs (dueno uid 1000 = usuario "node" del contenedor)
-              mkdir -p /mnt/efs
-              until mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport \
-                  ${ArchivosEfs}.efs.$REGION.amazonaws.com:/ /mnt/efs; do echo "Esperando EFS..."; sleep 10; done
-              echo "${ArchivosEfs}.efs.$REGION.amazonaws.com:/ /mnt/efs nfs4 nfsvers=4.1,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab
+              # 3) Fotos compartidas: EFS en /mnt/efs (dueno uid 1000 = usuario "node" del contenedor).
+              #    Cifrado en transito: NFS dentro de un tunel TLS (stunnel, igual que amazon-efs-utils) verificando el
+              #    certificado de EFS. Si el tunel no levanta, se monta NFS directo (dentro de la VPC) y la consola lo muestra.
+              EFS_DNS=${ArchivosEfs}.efs.$REGION.amazonaws.com
+              mkdir -p /mnt/efs /etc/stunnel
+              cat > /etc/stunnel/efs.conf <<EOF
+              foreground = yes
+              pid =
+              [efs]
+              client = yes
+              accept = 127.0.0.1:20049
+              connect = $EFS_DNS:2049
+              sslVersionMin = TLSv1.2
+              verifyChain = yes
+              CAfile = /etc/ssl/certs/ca-certificates.crt
+              checkHost = $EFS_DNS
+              renegotiation = no
+              delay = yes
+              TIMEOUTidle = 43200
+              EOF
+              sed -i 's/^ *//' /etc/stunnel/efs.conf
+              cat > /etc/systemd/system/efs-tls.service <<EOF
+              [Unit]
+              Description=Tunel TLS hacia Amazon EFS
+              After=network-online.target
+              Wants=network-online.target
+              [Service]
+              ExecStart=/usr/bin/stunnel /etc/stunnel/efs.conf
+              Restart=always
+              [Install]
+              WantedBy=multi-user.target
+              EOF
+              sed -i 's/^ *//' /etc/systemd/system/efs-tls.service
+              systemctl daemon-reload && systemctl enable --now efs-tls.service
+              OPC_NFS=nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport
+              EFS_TLS=0
+              for i in 1 2 3 4 5 6; do
+                if timeout 60 mount -t nfs4 -o "$OPC_NFS,port=20049" 127.0.0.1:/ /mnt/efs; then EFS_TLS=1; break; fi
+                echo "Esperando EFS por TLS..."; sleep 10
+              done
+              if [ "$EFS_TLS" = 1 ]; then
+                echo "127.0.0.1:/ /mnt/efs nfs4 $OPC_NFS,port=20049,_netdev,x-systemd.requires=efs-tls.service 0 0" >> /etc/fstab
+              else
+                echo "AVISO: EFS sin TLS (no se pudo establecer el tunel); se monta NFS directo dentro de la VPC"
+                systemctl disable --now efs-tls.service || true
+                until mount -t nfs4 -o "$OPC_NFS" $EFS_DNS:/ /mnt/efs; do echo "Esperando EFS..."; sleep 10; done
+                echo "$EFS_DNS:/ /mnt/efs nfs4 $OPC_NFS,_netdev 0 0" >> /etc/fstab
+              fi
               mkdir -p /mnt/efs/uploads && chown 1000:1000 /mnt/efs/uploads && chmod 750 /mnt/efs/uploads
 
               # 4) Certificado de la CA de RDS (verificacion TLS de la BD)
@@ -394,25 +448,51 @@ Resources:
               until DB_HOST=$(aws rds describe-db-instances --region $REGION --db-instance-identifier "${AWS::StackName}-bd" \
                   --query 'DBInstances[0].Endpoint.Address' --output text) && [ "$DB_HOST" != "None" ]; do sleep 15; done
 
-              # 6) Secretos desde Secrets Manager -> .env.aws (solo root, nunca sale de la instancia)
+              # 6) Secretos desde Secrets Manager (solo root, nunca salen de la instancia)
               secreto() { aws secretsmanager get-secret-value --region $REGION --secret-id "$1" --query SecretString --output text | jq -r ".$2"; }
               umask 077
-              cat > "$DIR/.env.aws" <<EOF
-              DB_HOST=$DB_HOST
-              DB_PORT=5432
-              DB_NAME=pnk_carta
-              DB_USER=$(secreto "${SecretoBd}" username)
-              DB_PASSWORD=$(secreto "${SecretoBd}" password)
-              SESSION_SECRET=$(secreto "${SecretoApp}" valor)
-              ADMIN_PASSWORD=$(secreto "${SecretoAdmin}" password)
-              CLIENTE_PASSWORD=$(secreto "${SecretoCliente}" password)
-              PUBLIC_HOST=${Host}
-              FORCE_HTTPS=1
-              EOF
-              sed -i 's/^ *//' "$DIR/.env.aws"
+              comunes() {
+                echo "DB_HOST=$DB_HOST"; echo "DB_PORT=5432"; echo "DB_NAME=pnk_carta"
+                echo "SESSION_SECRET=$(secreto "${SecretoApp}" valor)"
+                echo "ADMIN_PASSWORD=$(secreto "${SecretoAdmin}" password)"
+                echo "CLIENTE_PASSWORD=$(secreto "${SecretoCliente}" password)"
+                echo "PUBLIC_HOST=${Host}"; echo "FORCE_HTTPS=1"
+              }
+              APP_USER=$(secreto "${SecretoBdApp}" username); APP_PASS=$(secreto "${SecretoBdApp}" password)
+              MASTER_USER=$(secreto "${SecretoBd}" username); MASTER_PASS=$(secreto "${SecretoBd}" password)
 
-              # 7) Arranque del contenedor
-              EFS_UPLOADS=/mnt/efs/uploads RDS_CA="$DIR/rds-ca.pem" docker compose -p carta-digital -f docker-compose.aws.yml --profile backend up -d
+              # 6b) Migraciones + cuentas + rol de minimo privilegio, con el usuario MAESTRO en un contenedor de un solo uso.
+              { comunes; echo "DB_USER=$MASTER_USER"; echo "DB_PASSWORD=$MASTER_PASS"
+                echo "APP_DB_USER=$APP_USER"; echo "APP_DB_PASSWORD=$APP_PASS"; } > "$DIR/.env.bd-admin"
+              if docker run --rm --env-file "$DIR/.env.bd-admin" -e APP_ENV=prod -e NODE_ENV=production -e DB_SSL=1 \
+                  -e DB_SSL_CA=/certs/rds-ca.pem -v "$DIR/rds-ca.pem:/certs/rds-ca.pem:ro" carta-backend:latest node scripts/preparar-bd.js; then
+                DB_USER_APP=$APP_USER; DB_PASS_APP=$APP_PASS; AUTO_MIGRATE=0
+              else
+                # Disponibilidad primero: si no se pudo preparar el rol, la app usa el maestro (la consola lo marca).
+                echo "AVISO: no se pudo preparar el rol de la app; se usa el usuario maestro"
+                DB_USER_APP=$MASTER_USER; DB_PASS_APP=$MASTER_PASS; AUTO_MIGRATE=1
+              fi
+              shred -u "$DIR/.env.bd-admin" 2>/dev/null || rm -f "$DIR/.env.bd-admin"
+              { comunes; echo "DB_USER=$DB_USER_APP"; echo "DB_PASSWORD=$DB_PASS_APP"; echo "EFS_TLS=$EFS_TLS"; } > "$DIR/.env.aws"
+              unset MASTER_PASS APP_PASS DB_PASS_APP
+
+              # 6c) Registros en CloudWatch Logs con retencion de 30 dias (contienen IP y correo de eventos de seguridad).
+              #     Si el laboratorio no lo permite, quedan en el disco de la instancia con rotacion (json-file).
+              LOG_GRUPO=/${AWS::StackName}/backend
+              EXTRA_COMPOSE=""
+              aws logs create-log-group --region $REGION --log-group-name "$LOG_GRUPO" 2>/dev/null || true
+              if aws logs put-retention-policy --region $REGION --log-group-name "$LOG_GRUPO" --retention-in-days 30 \
+                  && aws logs create-log-stream --region $REGION --log-group-name "$LOG_GRUPO" --log-stream-name "prueba-$(hostname)" \
+                  && aws logs delete-log-stream --region $REGION --log-group-name "$LOG_GRUPO" --log-stream-name "prueba-$(hostname)"; then
+                EXTRA_COMPOSE="-f docker-compose.aws-logs.yml"
+                export LOG_GRUPO LOG_STREAM="backend-$(hostname)" AWS_REGION=$REGION
+              else
+                echo "AVISO: CloudWatch Logs no disponible; registros locales con rotacion"
+              fi
+
+              # 7) Arranque del contenedor (la app ya NO migra: lo hizo el paso 6b)
+              export AUTO_MIGRATE EFS_UPLOADS=/mnt/efs/uploads RDS_CA="$DIR/rds-ca.pem"
+              docker compose -p carta-digital -f docker-compose.aws.yml $EXTRA_COMPOSE --profile backend up -d
               echo "Backend iniciado (commit $(git rev-parse --short HEAD))"
             - Host: !If [SinDominio, !GetAtt Balanceador.DNSName, !Ref DominioPublico]
 

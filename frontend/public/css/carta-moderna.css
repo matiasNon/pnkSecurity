@@ -617,3 +617,10 @@ a.button.cm-btn { padding-top: 0; padding-bottom: 0; text-transform: none; }
 }
 .cm-error-caja h1 { font-size: clamp(24px, 3.6vw, 32px); font-weight: 900; color: var(--cm-azul); margin: 18px 0 10px; }
 .cm-error-caja p { color: var(--cm-texto-suave); margin: 0 0 20px; }
+
+/* Enlace legal del pie y aviso de privacidad del formulario de comentarios */
+.cm-pie-legal { margin-top: 10px; }
+.cm-pie-legal a { color: #9fd8b3; text-decoration: underline; text-underline-offset: 3px; }
+.cm-pie-legal a:hover, .cm-pie-legal a:focus-visible { color: #fff; }
+.cm-aviso-privacidad { display: block; margin: 6px 0 10px; color: var(--cm-texto-suave); }
+.cm-aviso-privacidad a { color: var(--cm-azul-600); text-decoration: underline; }

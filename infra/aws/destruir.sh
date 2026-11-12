@@ -22,4 +22,7 @@ echo "== Borrando el certificado de ACM"
 CERT=$(aws acm list-certificates --query "CertificateSummaryList[?DomainName=='carta-digital.local'].CertificateArn | [0]" --output text)
 [ "$CERT" != "None" ] && [ -n "$CERT" ] && aws acm delete-certificate --certificate-arn "$CERT" && echo "Eliminado $CERT"
 
+echo "== Borrando el grupo de registros de CloudWatch (si existe)"
+aws logs delete-log-group --log-group-name "/$STACK/backend" 2>/dev/null && echo "Eliminado /$STACK/backend" || true
+
 echo "Ambiente eliminado en $(( ($(date +%s) - inicio) / 60 )) min"

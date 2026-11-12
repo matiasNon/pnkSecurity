@@ -23,6 +23,8 @@ const esquema = z.object({
   // Solo se confia en X-Forwarded-* si se declara explicitamente (de lo contrario cualquiera podria falsificarlas).
   TRUST_PROXY: z.enum(['0', '1']).default('0'),
   FORCE_HTTPS: z.enum(['0', '1']).default('0'),
+  // Detras de Cloudflare: usar CF-Connecting-IP solo si la conexion viene de un rango de Cloudflare (middleware/cloudflare.js).
+  TRUST_CLOUDFLARE: z.enum(['0', '1']).default('0'),
   PUBLIC_HOST: z.string().default(''),
 
   UPLOAD_DIR: z.string().default('uploads'),
@@ -69,6 +71,7 @@ function cargarConfig(entorno = process.env) {
     // La cookie de sesion solo viaja por HTTPS en produccion; en dev/qa se sirve por HTTP.
     cookieSegura: prod,
     confiarProxy: cfg.TRUST_PROXY === '1',
+    confiarCloudflare: cfg.TRUST_PROXY === '1' && cfg.TRUST_CLOUDFLARE === '1',
     bdSsl: cfg.DB_SSL === '1',
     forzarHttps: cfg.FORCE_HTTPS === '1',
   });

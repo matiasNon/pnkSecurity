@@ -1,37 +1,62 @@
-# Cloudflare como capa de seguridad (tunel rapido listo; WAF al tener dominio)
+# Cloudflare: DNS y HTTPS para la carta digital (paso manual)
 
-## Opcion A: Cloudflare Tunnel rapido (sin dominio ni cuenta)
+Estado al 11-11-2026: **activo** en `https://carta.pnkcarta.me` (dominio `pnkcarta.me`, Namecheap con GitHub Student Pack;
+plan Free de Cloudflare). Es el único paso que no hace `infra/aws/desplegar.sh`, tal como pide el requisito.
 
-`docker-compose.cloudflare.yml` agrega un contenedor `cloudflared` que abre una conexion **saliente** hacia Cloudflare y entrega una URL
-`https://<palabras>.trycloudflare.com` con certificado valido; el trafico pasa por la red de Cloudflare antes de llegar a nginx.
-
-```bash
-C="docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.cloudflare.yml"
-$C up -d --build
-$C logs cloudflared | grep trycloudflare      # muestra la URL publica
+```
+Visitante --HTTPS (cert. Let's Encrypt de Cloudflare)--> Cloudflare --HTTPS (modo Full)--> ALB --> frontend / backend
 ```
 
-- nginx toma la IP real del visitante de `CF-Connecting-IP` **solo** si la conexion viene de la red interna de Docker (no es falsificable desde internet).
-- `--no-tls-verify` se usa solo entre `cloudflared` y nginx (misma red interna, certificado autofirmado).
-- Limitaciones: la URL cambia al reiniciar y el tunel rapido no ofrece WAF ni reglas de tasa de Cloudflare (eso requiere dominio, opcion B).
+## 1. Configuración (una sola vez)
 
-## Opcion B: dominio propio (WAF, SSL Full strict, reglas)
+1. **Cloudflare -> Add a domain** -> `pnkcarta.me` -> plan **Free**. La importación de registros puede dejar los antiguos
+   (GitHub Pages, correo): no afectan a la carta.
+2. **DNS -> Records -> Add record**
+   - Type `CNAME`, Name `carta`, Target = DNS del ALB (`ALB_DNS` en `infra/aws/salida.env`, por ejemplo
+     `carta-digital-alb-1105003705.us-east-1.elb.amazonaws.com`), **Proxied** (nube naranja).
+3. **Overview -> nameservers asignados** (en esta cuenta: `carter.ns.cloudflare.com` y `lila.ns.cloudflare.com`).
+4. **Namecheap -> Domain List -> Manage -> Nameservers -> Custom DNS** -> pegar los dos -> guardar (✓ verde).
+   La propagación en el registro `.me` tomó unos 5 minutos; Cloudflare activó la zona unos minutos después.
+5. **SSL/TLS -> Overview -> Full** (no "Full (strict)": el ALB usa un certificado autofirmado importado en ACM y con strict
+   Cloudflare respondería con el error 526).
+6. **SSL/TLS -> Edge Certificates -> Always Use HTTPS: ON**.
 
+## 2. Verificación
 
-Cloudflare solo protege dominios que pasan por sus servidores DNS. Como el proyecto se despliega **solo con IP publica de AWS**
-(sin dominio), el proxy no se puede activar todavia. La aplicacion ya esta lista; al contar con un dominio se hace asi:
+```bash
+dig +short NS pnkcarta.me @a0.nic.me          # carter / lila .ns.cloudflare.com
+dig +short carta.pnkcarta.me                  # IP de Cloudflare (104.21.x / 172.67.x), no la del ALB
+curl -sI https://carta.pnkcarta.me/           # server: cloudflare, strict-transport-security
+curl -sI http://carta.pnkcarta.me/            # 301 -> https
+curl -s https://carta.pnkcarta.me/api/estado  # backend ok, baseDatos.tls = true
+```
 
-1. Alta del dominio en Cloudflare y cambio de los NS en el registrador.
-2. DNS: registro `A  carta  ->  IP de la EC2` con **Proxy activado** (nube naranja).
-3. SSL/TLS -> modo **Full (strict)**; Origin Server -> crear un *Certificado de Origen* y reemplazar `infra/certs/carta.crt` y
-   `carta.key` (el autofirmado deja de ser necesario). Activar *Always Use HTTPS* y *Min TLS 1.2*.
-4. En el `.env.prod`: `PUBLIC_HOST=carta.midominio.cl`. La app ya fuerza HTTPS y envia HSTS.
-5. Security Group de AWS: permitir 80/443 solo desde los rangos de IP de Cloudflare (https://www.cloudflare.com/ips/), de modo
-   que nadie pueda saltarse el WAF yendo directo a la IP.
-6. Seguridad -> WAF: reglas administradas de OWASP, *Bot Fight Mode* y una regla de limitacion de tasa (p. ej. `/login`:
-   10 peticiones por minuto por IP; complementa los limites de nginx y de la propia app).
-7. IP real del visitante: nginx debe tomar `CF-Connecting-IP` (modulo `realip` con los rangos de Cloudflare) para que los
-   contadores de intentos de la app sigan contando por IP de cliente y no por IP de Cloudflare.
+Resultado del 11-11-2026: certificado válido (Let's Encrypt), HTTP->HTTPS 301, HSTS, `/api/health` 200, `/admin` 200,
+`/api/admin/*` 401 sin sesión, cookie `Secure; HttpOnly; SameSite=Strict`.
 
-Hasta entonces, las capas activas son: nginx (TLS 1.2/1.3 + limitacion de tasa), la app (CSP, CSRF, limitacion de intentos)
-y el Security Group de AWS.
+Si el PC no resuelve el nombre recién creado (caché negativa): `resolvectl flush-caches`.
+
+## 3. Al recrear el ambiente (prueba de borrar y volver a desplegar)
+
+`destruir.sh` + `desplegar.sh` crean un **ALB nuevo con otro nombre DNS**. Lo único que hay que hacer es editar el CNAME
+`carta` en Cloudflare con el nuevo `ALB_DNS` de `infra/aws/salida.env`. Nameservers, SSL y "Always Use HTTPS" no cambian.
+Para que la app redirija al dominio: `DOMINIO=carta.pnkcarta.me bash infra/aws/desplegar.sh`.
+
+## 4. IP real del visitante
+
+Con Cloudflare delante, quien se conecta al ALB es un nodo de Cloudflare. La app (`TRUST_CLOUDFLARE=1` en
+`docker-compose.aws.yml`) toma la IP del visitante desde `CF-Connecting-IP` **solo si** la conexión viene de un rango oficial de
+Cloudflare (`src/middleware/cloudflare.js`); así los límites por IP y los registros de seguridad siguen siendo útiles, y la
+cabecera no se puede falsificar llegando directo al ALB.
+
+## 5. Mejoras opcionales (no requeridas)
+
+- **Full (strict):** crear un *Origin Certificate* en Cloudflare e importarlo a ACM en vez del autofirmado.
+- **Cerrar el acceso directo al ALB:** permitir 443 en su Security Group solo desde los rangos de Cloudflare
+  (https://www.cloudflare.com/ips/). Lo debe aplicar el responsable de AWS.
+- **WAF / reglas de tasa** del plan Free (Security -> WAF), por ejemplo para `/api/login`.
+
+## Alternativa sin dominio
+
+`docker-compose.cloudflare.yml` (túnel rápido `*.trycloudflare.com`) sigue disponible para el ambiente con una sola EC2;
+la URL cambia en cada reinicio y no ofrece WAF.

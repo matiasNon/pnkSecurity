@@ -20,7 +20,8 @@
       el('img', { src: '/img/logo.png', alt: 'PNK', width: '120', height: '34', class: 'cm-pie-logo' }),
       el('p', {}, 'Copyright 2020, Todos los Derechos reservados PNK.', el('br'),
         'Sitio desarrollado para la Explotación de Vulnerabilidades Web, Laboratorio de Programación Segura I', el('br'),
-        el('b', { text: 'Área Tecnologías de Información y Ciberseguridad - Inacap Sede La Serena' }))));
+        el('b', { text: 'Área Tecnologías de Información y Ciberseguridad - Inacap Sede La Serena' })),
+      el('p', { class: 'cm-pie-legal' }, el('a', { href: '/privacidad', text: 'Política de privacidad y tus datos' }))));
   }
 
   // Pinta las filas, el total, el contador y el aviso del garzon (solo si hay productos).

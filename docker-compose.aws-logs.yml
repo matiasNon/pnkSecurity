@@ -1,0 +1,14 @@
+# Complemento de docker-compose.aws.yml: envia los registros del backend a Amazon CloudWatch Logs.
+# El arranque de la instancia lo agrega solo si pudo crear el grupo con retencion de 30 dias (ISO 27001 A.8.15,
+# Ley 19.628: los eventos de seguridad contienen IP y correo, no se guardan indefinidamente).
+# Credenciales: las del perfil de la instancia (las lee el demonio Docker del host, no el contenedor).
+services:
+  backend:
+    logging: !override
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION:-us-east-1}
+        awslogs-group: ${LOG_GRUPO:-/carta-digital/backend}
+        awslogs-stream: ${LOG_STREAM:-backend}
+        mode: non-blocking
+        max-buffer-size: 4m

@@ -8,6 +8,7 @@ const crearCartaModelo = require('./carta');
 const crearUsuarioModelo = require('./usuario');
 const crearComentarioModelo = require('./comentario');
 const crearAdminModelo = require('./admin');
+const crearCuentaModelo = require('./cuenta');
 
 function crearModelos(pool) {
   return {
@@ -16,6 +17,7 @@ function crearModelos(pool) {
     usuario: crearUsuarioModelo(pool),
     comentario: crearComentarioModelo(pool),
     admin: crearAdminModelo(pool),
+    cuenta: crearCuentaModelo(pool),
   };
 }
 

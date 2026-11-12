@@ -34,15 +34,20 @@ function crearControladorEstado({ cfg, pool }) {
       // pg_stat_ssl confirma desde el propio servidor que ESTA conexion va cifrada (no solo la configuracion).
       const { rows } = await pool.query(
         `SELECT COALESCE((SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()), false) AS tls,
+                -- Minimo privilegio: el usuario de la app no es superusuario ni puede crear BD/roles ni es rds_superuser.
+                (SELECT NOT (r.rolsuper OR r.rolcreatedb OR r.rolcreaterole)
+                        AND NOT EXISTS (SELECT 1 FROM pg_roles s WHERE s.rolname = 'rds_superuser'
+                                          AND pg_has_role(current_user, s.oid, 'MEMBER'))
+                   FROM pg_roles r WHERE r.rolname = current_user) AS "minimoPrivilegio",
                 (SELECT count(*)::int FROM cartas WHERE eliminado_en IS NULL) AS cartas,
                 (SELECT count(*)::int FROM categorias WHERE eliminado_en IS NULL) AS categorias,
                 (SELECT count(*)::int FROM items WHERE eliminado_en IS NULL) AS productos`
       );
       const latenciaMs = Number(process.hrtime.bigint() - t0) / 1e6;
-      const { tls, ...conteos } = rows[0];
-      return { ok: true, latenciaMs: Math.round(latenciaMs * 10) / 10, tls, conteos };
+      const { tls, minimoPrivilegio, ...conteos } = rows[0];
+      return { ok: true, latenciaMs: Math.round(latenciaMs * 10) / 10, tls, minimoPrivilegio, conteos };
     } catch {
-      return { ok: false, latenciaMs: null, tls: null, conteos: null };
+      return { ok: false, latenciaMs: null, tls: null, minimoPrivilegio: null, conteos: null };
     }
   }
 
@@ -51,9 +56,10 @@ function crearControladorEstado({ cfg, pool }) {
       const dir = path.resolve(cfg.UPLOAD_DIR);
       await fs.access(dir, fs.constants.R_OK | fs.constants.W_OK);
       const archivos = (await fs.readdir(dir)).filter((n) => !n.startsWith('.')).length;
-      return { ok: true, archivos };
+      // EFS_TLS lo fija el arranque de la instancia segun como quedo montado el volumen (1 = NFS dentro de TLS).
+      return { ok: true, archivos, tlsTransito: process.env.EFS_TLS === '1' ? true : process.env.EFS_TLS === '0' ? false : null };
     } catch {
-      return { ok: false, archivos: null };
+      return { ok: false, archivos: null, tlsTransito: null };
     }
   }
 

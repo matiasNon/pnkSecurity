@@ -6,7 +6,7 @@ const express = require('express');
 const { validarCsrf } = require('../middleware/csrf');
 const { requiereSesion, requiereAdmin } = require('../middleware/autenticacion');
 
-function rutasPublicas({ carta, comentario, auth }) {
+function rutasPublicas({ carta, comentario, auth, cuenta }) {
   const router = express.Router();
 
   router.get('/sesion', auth.sesion);
@@ -26,6 +26,13 @@ function rutasPublicas({ carta, comentario, auth }) {
 
   router.post('/restaurantes/:id/comentarios', carta.cargarRestaurante,
     carta.soloJson('comentario_tipo_contenido_rechazado'), validarCsrf('comentario_csrf_invalido'), comentario);
+
+  // Derechos del titular sobre su propia cuenta (acceso/portabilidad, rectificacion, supresion).
+  router.get('/mi-cuenta/datos', requiereSesion, cuenta.exportar);
+  router.patch('/mi-cuenta', requiereSesion, carta.soloJson('cuenta_tipo_contenido_rechazado'),
+    validarCsrf('cuenta_csrf_invalido'), cuenta.rectificar);
+  router.delete('/mi-cuenta', requiereSesion, carta.soloJson('cuenta_tipo_contenido_rechazado'),
+    validarCsrf('cuenta_csrf_invalido'), cuenta.suprimir);
 
   return router;
 }

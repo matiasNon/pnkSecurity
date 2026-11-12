@@ -247,6 +247,8 @@
       const texto = el('textarea', { class: 'form-control', rows: 4, id: 'comentario', name: 'comentario', maxlength: 1000, required: true, placeholder: '¿Qué te pareció?' });
       form = el('form', { class: 'cm-form-comentario' },
         el('label', { for: 'comentario', text: `Comentando como ${estado.usuario.nombre}` }), texto,
+        el('small', { class: 'cm-aviso-privacidad' }, 'Tu comentario se publicará junto a tu nombre. ',
+          el('a', { href: '/privacidad', text: 'Ver o cambiar tus datos' })),
         el('button', { type: 'submit', class: 'cm-btn cm-btn-verde', text: 'Comentar' }));
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -275,7 +277,8 @@
       el('img', { src: '/img/logo.png', alt: 'PNK', width: '120', height: '34', class: 'cm-pie-logo' }),
       el('p', {}, 'Copyright 2020, Todos los Derechos reservados PNK.', el('br'),
         'Sitio desarrollado para la Explotación de Vulnerabilidades Web, Laboratorio de Programación Segura I', el('br'),
-        el('b', { text: 'Área Tecnologías de Información y Ciberseguridad - Inacap Sede La Serena' }))));
+        el('b', { text: 'Área Tecnologías de Información y Ciberseguridad - Inacap Sede La Serena' })),
+      el('p', { class: 'cm-pie-legal' }, el('a', { href: '/privacidad', text: 'Política de privacidad y tus datos' }))));
   }
 
   // ---------- Carrito ----------

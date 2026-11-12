@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacidad y tus datos · Carta Digital PNK</title>
+  <link rel="stylesheet" href="/css/carta-moderna.css">
+  <link rel="stylesheet" href="/css/privacidad.css">
+</head>
+<body>
+  <header class="cm-header">
+    <div class="cm-contenedor cm-header-fila">
+      <a class="cm-logo" href="/restaurantes/1" aria-label="Volver a la carta"><img src="/img/logo.png" alt="PNK" width="150" height="42"></a>
+      <a class="cm-btn cm-btn-claro" href="/restaurantes/1">Volver a la carta</a>
+    </div>
+  </header>
+
+  <section class="pv-titulo">
+    <div class="cm-contenedor">
+      <span class="cm-chip">Privacidad</span>
+      <h1>Política de privacidad y tus datos</h1>
+      <p>Cómo la Carta Digital PNK trata tus datos personales y cómo ejercer tus derechos. Última actualización: 11-11-2026.</p>
+    </div>
+  </section>
+
+  <main class="cm-contenedor pv-main">
+    <section class="pv-panel" id="mis-datos" aria-labelledby="t-mis-datos">
+      <h2 id="t-mis-datos">Mis datos</h2>
+      <div id="panel-cuenta" aria-live="polite"><p>Cargando…</p></div>
+    </section>
+
+    <article class="pv-texto">
+      <h2>1. Responsable</h2>
+      <p>Carta Digital PNK, proyecto académico del Laboratorio de Programación Segura I, Área Tecnologías de Información y
+        Ciberseguridad, Inacap Sede La Serena. Consultas sobre tus datos: a través del restaurante o del equipo del proyecto.</p>
+
+      <h2>2. Qué datos tratamos y para qué</h2>
+      <div class="pv-tabla">
+        <table>
+          <thead><tr><th>Dato</th><th>Finalidad</th><th>Base de licitud</th><th>Conservación</th></tr></thead>
+          <tbody>
+            <tr><td>Nombre y correo de tu cuenta</td><td>Iniciar sesión y gestionar tu cuenta</td><td>Relación con el servicio que solicitaste</td><td>Mientras mantengas la cuenta; se borra al eliminarla</td></tr>
+            <tr><td>Contraseña (solo un hash scrypt; nunca la guardamos en claro)</td><td>Autenticarte</td><td>Relación con el servicio</td><td>Mientras mantengas la cuenta</td></tr>
+            <tr><td>Comentarios y el nombre con que los publicas</td><td>Mostrarlos en la carta del restaurante</td><td>Tu decisión de publicarlos</td><td>Mientras mantengas la cuenta; al eliminarla quedan anónimos</td></tr>
+            <tr><td>Carrito y sesión (cookie <code>PNKSESSID</code>)</td><td>Funcionamiento del sitio</td><td>Necesaria para prestar el servicio</td><td>30 min sin uso; máximo 8 horas</td></tr>
+            <tr><td>Dirección IP y correo en eventos de seguridad (inicios de sesión, errores)</td><td>Prevenir abusos y fuerza bruta; investigar incidentes</td><td>Interés en la seguridad del servicio</td><td>Registros: 30 días. Contadores de intentos: 1 hora y solo como hash</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>No pedimos datos sensibles (salud, biométricos, etc.), no hacemos perfiles ni decisiones automatizadas y no vendemos ni
+        cedemos tus datos. Solo usamos una cookie, y es técnica: sin ella no funcionan la sesión ni el carrito.</p>
+
+      <h2>3. Quién más los procesa (encargados) y transferencia internacional</h2>
+      <ul>
+        <li><b>Amazon Web Services</b> (región us-east-1, Estados Unidos): servidores, base de datos y respaldos.</li>
+        <li><b>Cloudflare</b> (red global): DNS, HTTPS y protección del sitio; ve las peticiones en tránsito.</li>
+      </ul>
+      <p>Por eso tus datos se almacenan y transitan fuera de Chile. Ambos proveedores actúan como encargados del tratamiento
+        bajo sus propios compromisos de seguridad y confidencialidad.</p>
+
+      <h2>4. Cómo los protegemos</h2>
+      <ul>
+        <li>HTTPS en todo el recorrido (Cloudflare, balanceador y base de datos con TLS verificado).</li>
+        <li>Base de datos privada, cifrada en reposo y accesible solo por el backend, con un usuario de mínimo privilegio.</li>
+        <li>Contraseñas con hash scrypt, límites de intentos, cookie Secure/HttpOnly/SameSite=Strict y protección CSRF.</li>
+      </ul>
+
+      <h2>5. Tus derechos</h2>
+      <p>Puedes ejercer tus derechos de <b>acceso</b>, <b>rectificación</b>, <b>supresión</b> y <b>oposición</b>
+        (Ley N° 19.628) y, desde el 1 de diciembre de 2026, también los de <b>portabilidad</b> y <b>bloqueo</b> que
+        incorpora la Ley N° 21.719. En la sección <a href="#mis-datos">Mis datos</a> puedes hacerlo tú mismo,
+        al instante y sin costo:</p>
+      <ul>
+        <li><b>Acceso y portabilidad:</b> descarga todos tus datos en un archivo JSON.</li>
+        <li><b>Rectificación:</b> corrige tu nombre (también cambia en tus comentarios).</li>
+        <li><b>Supresión:</b> elimina tu cuenta; tus comentarios quedan publicados como «Usuario eliminado».</li>
+      </ul>
+      <p>Para otros casos (oposición, bloqueo o dudas) contacta al restaurante o al equipo del proyecto. Si no recibes respuesta,
+        puedes recurrir a la autoridad de protección de datos que corresponda.</p>
+    </article>
+  </main>
+
+  <footer class="cm-pie">
+    <div class="cm-contenedor">
+      <img src="/img/logo.png" alt="PNK" width="120" height="34" class="cm-pie-logo">
+      <p>Sitio desarrollado para el Laboratorio de Programación Segura I<br><b>Área Tecnologías de Información y Ciberseguridad - Inacap Sede La Serena</b></p>
+    </div>
+  </footer>
+
+  <script src="/js/app/comun.js"></script>
+  <script src="/js/app/privacidad.js"></script>
+</body>
+</html>

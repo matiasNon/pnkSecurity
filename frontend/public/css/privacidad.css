@@ -1,0 +1,36 @@
+/* Pagina /privacidad: reutiliza los tokens y componentes de carta-moderna.css (--cm-*, .cm-btn, .cm-header, .cm-pie). */
+body { background: var(--cm-fondo); }
+.pv-titulo { background: var(--cm-azul); color: #fff; padding: 36px 0; }
+.pv-titulo h1 { font-size: clamp(26px, 4vw, 38px); font-weight: 900; margin: 10px 0 6px; color: #fff; }
+.pv-titulo p { margin: 0; color: rgba(255, 255, 255, 0.82); max-width: 70ch; }
+
+.pv-main { padding-top: 32px; padding-bottom: 48px; display: grid; gap: 28px; }
+.pv-panel, .pv-texto {
+  background: #fff; border: 1px solid var(--cm-borde); border-radius: var(--cm-radio);
+  box-shadow: 0 6px 20px -14px rgba(8, 42, 74, 0.35); padding: 24px;
+}
+.pv-panel h2, .pv-texto h2 { color: var(--cm-azul); font-weight: 800; font-size: 21px; margin: 0 0 12px; }
+.pv-texto h2 { margin-top: 26px; }
+.pv-texto h2:first-child { margin-top: 0; }
+.pv-texto p, .pv-texto li { max-width: 80ch; }
+.pv-texto a, .pv-panel a:not(.cm-btn) { color: var(--cm-azul-600); text-decoration: underline; }
+
+.pv-tabla { overflow-x: auto; }
+.pv-tabla table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 15px; }
+.pv-tabla th { text-align: left; background: var(--cm-azul-100); color: var(--cm-azul); padding: 10px 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
+.pv-tabla td { padding: 10px 12px; border-top: 1px solid var(--cm-borde); vertical-align: top; }
+
+.pv-acciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 12px; }
+.pv-accion { border: 1px solid var(--cm-borde); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.pv-accion h3 { font-size: 17px; font-weight: 800; margin: 0; }
+.pv-form { display: grid; gap: 6px; }
+.pv-form label { font-weight: 600; font-size: 14px; }
+.pv-input { box-sizing: border-box; font: inherit; padding: 9px 12px; border: 1px solid var(--cm-borde); border-radius: 10px; width: 100%; }
+.pv-input:focus-visible { outline: 3px solid #ffbe0f; outline-offset: 1px; }
+.pv-btn { margin-top: 6px; justify-self: start; }
+.pv-btn-peligro { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+.pv-btn-peligro:hover { background: #991b1b; color: #fff; }
+.pv-nota { margin: 0; color: var(--cm-texto-suave); font-size: 14px; }
+.pv-aviso { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: #dcfce7; color: #14532d; font-weight: 600; }
+.pv-aviso:empty { display: none; }
+.pv-aviso.pv-error { background: #fee2e2; color: #7f1d1d; }

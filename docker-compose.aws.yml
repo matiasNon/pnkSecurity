@@ -22,13 +22,16 @@ services:
       APP_ENV: prod
       NODE_ENV: production
       PORT: "3000"
-      # Las migraciones usan un candado de asesoria: varias instancias pueden arrancar a la vez sin conflicto.
-      AUTO_MIGRATE: "1"
+      # En AWS las migraciones y el rol de minimo privilegio los aplica scripts/preparar-bd.js con el usuario maestro
+      # (user-data); la app corre con ese rol y no migra (AUTO_MIGRATE=0). Si eso fallo, el arranque exporta 1.
+      AUTO_MIGRATE: "${AUTO_MIGRATE:-1}"
       DB_SSL: "1"
       DB_SSL_CA: /certs/rds-ca.pem
       UPLOAD_DIR: /data/uploads
       # Detras del ALB: se confia en X-Forwarded-* de un solo salto (el balanceador).
       TRUST_PROXY: "1"
+      # El sitio publico pasa por Cloudflare: IP real del visitante desde CF-Connecting-IP (solo si viene de Cloudflare).
+      TRUST_CLOUDFLARE: "1"
     ports:
       - "3000:3000"
     volumes:

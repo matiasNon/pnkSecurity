@@ -68,6 +68,8 @@
       marcar('t-bd', bd.ok ? 'ok' : 'error');
       texto('v-latencia', bd.ok ? bd.latenciaMs.toFixed(1) : '—');
       texto('v-tls', bd.ok ? (bd.tls ? 'Cifrada con TLS ✓' : 'Sin TLS') : 'Sin conexión');
+      texto('v-privilegio', bd.minimoPrivilegio === true ? 'Mínimo privilegio ✓'
+        : bd.minimoPrivilegio === false ? 'Con privilegios de administración' : '—');
       if (bd.conteos) {
         texto('c-cartas', bd.conteos.cartas);
         texto('c-categorias', bd.conteos.categorias);
@@ -77,6 +79,7 @@
       const al = d.almacenamiento;
       marcar('t-efs', al.ok ? 'ok' : 'error');
       texto('v-archivos', al.ok ? al.archivos : '—');
+      texto('v-efs-tls', al.tlsTransito === true ? 'Cifrado con TLS ✓' : al.tlsTransito === false ? 'NFS sin TLS' : 'Volumen local');
 
       texto('v-hora', `Actualizado ${new Date(d.hora).toLocaleTimeString('es-CL')}`);
       pintarHistorial(d.nodo);

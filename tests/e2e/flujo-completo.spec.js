@@ -241,3 +241,29 @@ test.describe('Consola del backend (/api/)', () => {
     expect(errores).toEqual([]);
   });
 });
+
+test.describe('Privacidad (Ley 19.628 / 21.719)', () => {
+  test('aviso de privacidad accesible desde el pie y panel "Mis datos" con sesion', async ({ page }) => {
+    await page.goto('/restaurantes/1');
+    await page.getByRole('link', { name: 'Política de privacidad y tus datos' }).click();
+    await expect(page).toHaveURL(/\/privacidad$/);
+    await expect(page.getByRole('heading', { name: 'Política de privacidad y tus datos' })).toBeVisible();
+    await expect(page.getByText('Amazon Web Services')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Iniciar sesión' })).toBeVisible();
+
+    await page.goto('/restaurantes/1');
+    await page.getByPlaceholder('Usuario').fill('alondra@gmail.com');
+    await page.getByPlaceholder('Contraseña').fill('alondra01');
+    await page.getByRole('button', { name: 'Ingresar' }).click();
+    await expect(page.getByText('Tu comentario se publicará junto a tu nombre')).toBeVisible();
+    await page.goto('/privacidad');
+    await expect(page.locator('#panel-cuenta')).toContainText('Sesión iniciada como Alondra');
+    await expect(page.getByRole('link', { name: 'Descargar mis datos (JSON)' })).toHaveAttribute('href', '/api/mi-cuenta/datos?descargar=1');
+    const datos = await page.request.get('/api/mi-cuenta/datos');
+    expect((await datos.json()).titular.email).toBe('alondra@gmail.com');
+    await page.locator('#pv-nombre').fill('Alondra');
+    await page.getByRole('button', { name: 'Guardar nombre' }).click();
+    await expect(page.locator('.pv-aviso')).toHaveText('Nombre actualizado.');
+    await captura(page, '12-privacidad-mis-datos');
+  });
+});

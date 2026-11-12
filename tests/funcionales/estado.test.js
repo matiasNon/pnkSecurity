@@ -18,6 +18,7 @@ describe('Consola del backend', () => {
     expect(typeof res.body.nodo).toBe('string');
     expect(typeof res.body.baseDatos.latenciaMs).toBe('number');
     expect(typeof res.body.baseDatos.tls).toBe('boolean');
+    expect(typeof res.body.baseDatos.minimoPrivilegio).toBe('boolean');
     for (const k of ['cartas', 'categorias', 'productos']) {
       expect(Number.isInteger(res.body.baseDatos.conteos[k])).toBe(true);
     }
@@ -34,7 +35,7 @@ describe('Consola del backend', () => {
       const res = await request(env.app).get('/api/estado');
       expect(res.status).toBe(503);
       expect(res.body.estado).toBe('degradado');
-      expect(res.body.baseDatos).toEqual({ ok: false, latenciaMs: null, tls: null, conteos: null });
+      expect(res.body.baseDatos).toEqual({ ok: false, latenciaMs: null, tls: null, minimoPrivilegio: null, conteos: null });
       expect(JSON.stringify(res.body)).not.toMatch(/ECONNREFUSED|10\.0\.0\.5/);
     } finally {
       env.pool.query = original;

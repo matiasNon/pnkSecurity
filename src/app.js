@@ -8,6 +8,7 @@ const express = require('express');
 
 const { crearModelos } = require('./models');
 const { cabecerasSeguridad, sinCache, forzarHttps } = require('./middleware/seguridad');
+const { ipRealCloudflare } = require('./middleware/cloudflare');
 const { middlewareSesion } = require('./middleware/sesion');
 const { asegurarToken } = require('./middleware/csrf');
 const { cargarUsuario } = require('./middleware/autenticacion');
@@ -18,6 +19,7 @@ const crearControladorAuth = require('./controllers/auth');
 const crearControladorComentario = require('./controllers/comentario');
 const crearControladorAdmin = require('./controllers/admin');
 const crearControladorEstado = require('./controllers/estado');
+const crearControladorCuenta = require('./controllers/cuenta');
 const { rutasPublicas, rutasAdmin } = require('./routes/api');
 
 function crearApp({ cfg, pool }) {
@@ -30,6 +32,7 @@ function crearApp({ cfg, pool }) {
   // Solo se confia en X-Forwarded-* cuando el despliegue lo declara (un salto: nginx o el ALB).
   app.set('trust proxy', cfg.confiarProxy ? 1 : false);
 
+  app.use(ipRealCloudflare(cfg));
   app.use(cabecerasSeguridad());
 
   // Salud para Docker, el health check del balanceador y la pipeline: sin sesion y sin redireccion a HTTPS.
@@ -68,6 +71,7 @@ function crearApp({ cfg, pool }) {
       carta: crearControladorCarta(modelos),
       comentario: crearControladorComentario(modelos, pool),
       auth: crearControladorAuth(modelos, pool, cfg),
+      cuenta: crearControladorCuenta(modelos, pool, cfg),
     })
   );
   api.use('/admin', rutasAdmin(crearControladorAdmin(modelos, subidas), subidas));
