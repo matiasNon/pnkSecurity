@@ -169,3 +169,68 @@ main { margin-top: -44px; padding-bottom: 48px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- CRUD ---------- */
+.crud-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .crud-layout { grid-template-columns: 1fr; } }
+.crud { min-width: 0; }
+.crud h3 { margin: 0; font-size: 17px; }
+
+.boton {
+  font: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
+  padding: 9px 16px; border-radius: 10px; border: 1px solid var(--borde);
+  background: var(--tarjeta); color: var(--texto);
+  transition: background-color 0.18s var(--ease), transform 0.12s var(--ease);
+}
+.boton:hover { background: var(--azul-100); }
+.boton:active { transform: scale(0.97); }
+.boton:focus-visible, .crud input:focus-visible, .crud select:focus-visible { outline: 3px solid #ffbe0f; outline-offset: 2px; }
+.boton.primario { background: var(--verde); border-color: var(--verde); color: #fff; }
+.boton.primario:hover { background: #126b33; }
+.boton.chico { padding: 5px 10px; font-size: 13px; }
+.boton.peligro { color: var(--rojo); }
+.boton.peligro.confirmar { background: var(--rojo); border-color: var(--rojo); color: #fff; }
+
+.crud-login { display: grid; gap: 6px; max-width: 360px; }
+.crud-login label, .crud-campo label { font-weight: 600; font-size: 14px; }
+.crud input[type="email"], .crud input[type="password"], .crud input[type="text"], .crud input[type="number"],
+.crud select, .crud input[type="file"] {
+  font: inherit; width: 100%; padding: 9px 12px; border-radius: 10px;
+  border: 1px solid var(--borde); background: var(--fondo); color: var(--texto);
+}
+.crud-login .boton { margin-top: 8px; justify-self: start; }
+.crud-error { margin: 2px 0 0; color: var(--rojo); font-size: 13px; font-weight: 600; }
+.crud-error:empty { display: none; }
+.crud-ok { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: #dcfce7; color: #14532d; font-weight: 600; font-size: 14px; }
+
+.crud-barra { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.crud-pestanas { display: inline-flex; background: var(--azul-100); border-radius: 12px; padding: 4px; gap: 4px; }
+.crud-pestana {
+  font: inherit; font-weight: 700; font-size: 14px; border: 0; cursor: pointer;
+  padding: 7px 14px; border-radius: 9px; background: transparent; color: var(--texto-suave);
+}
+.crud-pestana[aria-selected="true"] { background: var(--tarjeta); color: var(--texto); box-shadow: 0 2px 8px -4px rgba(8, 42, 74, 0.4); }
+.crud-usuario { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--texto-suave); }
+.crud-cabeza { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.crud-tabla { min-width: 560px; }
+.crud-mini { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; vertical-align: middle; background: var(--azul-100); }
+.crud-acciones { white-space: nowrap; display: flex; gap: 6px; }
+
+.crud-form { display: grid; gap: 12px; }
+.crud-grilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; }
+.crud-campo { display: grid; gap: 4px; align-content: start; }
+.crud-campo.check { grid-template-columns: auto 1fr; align-items: center; }
+.crud-campo.check .crud-error { grid-column: 1 / -1; }
+.crud-campo.check input { width: 18px; height: 18px; accent-color: var(--verde); }
+.crud-botones { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.crud-registro { background: var(--fondo); border: 1px solid var(--borde); border-radius: 14px; padding: 14px; }
+.crud-registro h3 { margin: 0 0 8px; font-size: 15px; }
+.crud-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 12px; }
+.crud-log:empty::after { content: "Aún no hay peticiones."; color: var(--texto-suave); }
+.crud-log li { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: center; }
+.crud-log code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crud-log .metodo { min-width: 54px; font-size: 10px; padding: 2px 4px; }
+.crud-log li.ok strong { color: var(--verde); }
+.crud-log li.error strong { color: var(--rojo); }
+.metodo.patch { background: var(--ambar); }

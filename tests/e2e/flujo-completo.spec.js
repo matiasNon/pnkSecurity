@@ -193,3 +193,51 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
     await captura(page, '11-sqli-404', { fullPage: false });
   });
 });
+
+test.describe('Consola del backend (/api/)', () => {
+  test('estado en vivo y CRUD de categorias contra la API (crear, editar, eliminar)', async ({ page }) => {
+    const errores = [];
+    page.on('pageerror', (e) => errores.push(e.message));
+    page.on('console', (m) => { if (m.type() === 'error' && !/Cross-Origin-Opener-Policy/.test(m.text())) errores.push(m.text()); });
+    await page.goto('/api/');
+    await expect(page.getByRole('heading', { name: 'Consola del backend' })).toBeVisible();
+    await expect(page.locator('#estado-global')).toHaveAttribute('data-estado', 'ok');
+
+    // Un cliente no admin no entra al CRUD.
+    await page.locator('#crud-email').fill('alondra@gmail.com');
+    await page.locator('#crud-clave').fill('alondra01');
+    await page.getByRole('button', { name: 'Ingresar' }).click();
+    await expect(page.locator('#crud')).toContainText('no tiene rol de administrador');
+
+    await page.locator('#crud-email').fill('admin@gmail.com');
+    await page.locator('#crud-clave').fill('admin01');
+    await page.getByRole('button', { name: 'Ingresar' }).click();
+    await expect(page.getByRole('tab', { name: 'Cartas' })).toHaveAttribute('aria-selected', 'true');
+
+    const nombre = `Consola ${sufijo}`;
+    await page.getByRole('tab', { name: 'Categorías' }).click();
+    await page.getByRole('button', { name: /\+ Nueva categoría/ }).click();
+    await page.locator('#crud-carta_id').selectOption({ index: 1 });
+    await page.locator('#crud-nombre').fill(nombre);
+    await page.getByRole('button', { name: 'Crear (POST)' }).click();
+    await expect(page.locator('.crud-ok')).toHaveText('Registro creado.');
+    const fila = page.locator('.crud-tabla tbody tr', { hasText: nombre });
+    await expect(fila).toHaveCount(1);
+    await expect(page.locator('#crud-log')).toContainText('POST/api/admin/categorias201');
+
+    await fila.getByRole('button', { name: 'Editar' }).click();
+    await page.locator('#crud-nombre').fill(`${nombre} editada`);
+    await page.getByRole('button', { name: 'Guardar cambios (PUT)' }).click();
+    await expect(page.locator('.crud-ok')).toHaveText('Cambios guardados.');
+    const editada = page.locator('.crud-tabla tbody tr', { hasText: `${nombre} editada` });
+    await expect(editada).toHaveCount(1);
+    await captura(page, '11-consola-backend-crud');
+
+    await editada.getByRole('button', { name: 'Eliminar' }).click();
+    await editada.getByRole('button', { name: '¿Confirmar?' }).click();
+    await expect(page.locator('.crud-ok')).toContainText('eliminado');
+    await expect(page.locator('.crud-tabla tbody tr', { hasText: nombre })).toHaveCount(0);
+    await expect(page.locator('#crud-log')).toContainText('DELETE/api/admin/categorias/');
+    expect(errores).toEqual([]);
+  });
+});

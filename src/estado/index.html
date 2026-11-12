@@ -7,6 +7,7 @@
   <title>Backend · Carta Digital PNK</title>
   <link rel="stylesheet" href="/api/_consola/estado.css">
   <script src="/api/_consola/estado.js" defer></script>
+  <script src="/api/_consola/crud.js" defer></script>
 </head>
 <body>
   <header class="cabecera">
@@ -73,6 +74,19 @@
       <p class="nota">Cada 5 segundos se consulta <code>/api/estado</code>; el ALB reparte las peticiones entre las instancias del Auto Scaling Group.</p>
       <ol class="historial" id="historial" aria-live="polite"></ol>
       <p class="nota" id="resumen-nodos"></p>
+    </section>
+
+    <section class="bloque" aria-labelledby="titulo-crud">
+      <h2 id="titulo-crud">CRUD de la carta</h2>
+      <p class="nota">Crear, leer, editar y eliminar cartas, categorías y productos directamente contra la API REST
+        (<code>/api/admin/:recurso</code>) que guarda en RDS. Cada petición queda en el registro de la derecha.</p>
+      <div class="crud-layout">
+        <div id="crud" class="crud" aria-live="polite"><p class="nota">Cargando…</p></div>
+        <aside class="crud-registro" aria-label="Peticiones HTTP">
+          <h3>Peticiones HTTP</h3>
+          <ol id="crud-log" class="crud-log"></ol>
+        </aside>
+      </div>
     </section>
 
     <section class="bloque" aria-labelledby="titulo-endpoints">
