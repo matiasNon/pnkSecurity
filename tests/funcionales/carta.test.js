@@ -105,8 +105,9 @@ describe('ASVS V1.2 / V2.2: el identificador del restaurante se valida como ente
   });
 
   test('la tabla items sigue intacta despues de los intentos de inyeccion SQL', async () => {
+    // 6 productos del volcado original + 7 de demostracion (db/migrations/004_datos_demo.sql).
     const r = await env.pool.query('SELECT count(*)::int AS n FROM items');
-    expect(r.rows[0].n).toBe(6);
+    expect(r.rows[0].n).toBe(13);
   });
 
   test('un restaurante marcado como eliminado devuelve 404', async () => {

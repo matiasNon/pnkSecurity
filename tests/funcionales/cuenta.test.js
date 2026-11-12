@@ -8,7 +8,12 @@ const { hashPassword } = require('../../src/services/password');
 
 let env;
 beforeAll(() => { env = crearEntorno(); });
-afterAll(async () => { await env.pool.end(); });
+afterAll(async () => {
+  // Limpieza: las cuentas y comentarios de prueba no deben quedar en la BD de QA (la usan las capturas de evidencia).
+  await env.pool.query("DELETE FROM comentarios WHERE comentario = 'Muy rico todo'");
+  await env.pool.query("DELETE FROM usuarios WHERE email LIKE 'titular%@correo.cl'");
+  await env.pool.end();
+});
 beforeEach(async () => { await limpiarIntentos(env.pool); });
 
 const CLAVE = 'clave-titular-01';
