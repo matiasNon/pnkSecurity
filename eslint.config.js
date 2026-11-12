@@ -28,7 +28,7 @@ module.exports = [
   },
   // Frontend: scripts clasicos del navegador (sin modulos), servidos por nginx.
   {
-    files: ['frontend/public/js/app/**/*.js'],
+    files: ['frontend/public/js/app/**/*.js', 'src/estado/**/*.js'],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'script',

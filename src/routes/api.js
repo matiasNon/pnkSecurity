@@ -19,6 +19,8 @@ function rutasPublicas({ carta, comentario, auth }) {
   const csrfCarrito = validarCsrf('carrito_csrf_invalido');
   router.post('/restaurantes/:id/carrito/items', carta.cargarRestaurante,
     carta.soloJson('carrito_tipo_contenido_rechazado'), csrfCarrito, carta.agregarItem);
+  router.patch('/restaurantes/:id/carrito/items/:pos', carta.cargarRestaurante,
+    carta.soloJson('carrito_tipo_contenido_rechazado'), csrfCarrito, carta.cambiarCantidad);
   router.delete('/restaurantes/:id/carrito/items/:pos', carta.cargarRestaurante, csrfCarrito, carta.eliminarItem);
   router.delete('/restaurantes/:id/carrito', carta.cargarRestaurante, csrfCarrito, carta.vaciarCarrito);
 

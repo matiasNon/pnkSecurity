@@ -17,6 +17,7 @@ const crearControladorCarta = require('./controllers/carta');
 const crearControladorAuth = require('./controllers/auth');
 const crearControladorComentario = require('./controllers/comentario');
 const crearControladorAdmin = require('./controllers/admin');
+const crearControladorEstado = require('./controllers/estado');
 const { rutasPublicas, rutasAdmin } = require('./routes/api');
 
 function crearApp({ cfg, pool }) {
@@ -44,6 +45,13 @@ function crearApp({ cfg, pool }) {
   app.get('/api/health', salud);
 
   app.use(forzarHttps(cfg));
+
+  // Consola de estado del backend (HTML + JSON vivo), sin sesion: va antes del router de la API.
+  const consola = crearControladorEstado({ cfg, pool });
+  app.get(['/api', '/api/'], consola.pagina);
+  app.get('/api/estado', consola.estado);
+  app.use('/api/_consola', consola.recursos,
+    express.static(consola.DIR_PAGINA, { index: false, dotfiles: 'ignore', maxAge: '10m' }));
 
   // Fotos subidas por el panel (volumen aparte: EFS en AWS). Solo imagenes con nombre aleatorio.
   app.use('/uploads', express.static(path.resolve(cfg.UPLOAD_DIR), { index: false, dotfiles: 'ignore', maxAge: '1h' }));

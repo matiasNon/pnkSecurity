@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Backend · Carta Digital PNK</title>
+  <link rel="stylesheet" href="/api/_consola/estado.css">
+  <script src="/api/_consola/estado.js" defer></script>
+</head>
+<body>
+  <header class="cabecera">
+    <div class="contenedor cabecera-fila">
+      <div>
+        <p class="sobretitulo">Carta Digital PNK · API REST</p>
+        <h1>Consola del backend</h1>
+        <p class="bajada">Node.js + Express detrás del Application Load Balancer, con PostgreSQL en Amazon RDS y fotos en Amazon EFS.</p>
+      </div>
+      <div class="estado-global" id="estado-global" data-estado="cargando">
+        <span class="punto" aria-hidden="true"></span>
+        <span id="estado-global-texto">Revisando…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="contenedor">
+    <section class="tarjetas" aria-label="Componentes">
+      <article class="tarjeta" id="t-backend" data-estado="cargando">
+        <div class="tarjeta-cabeza"><span class="icono" aria-hidden="true">⚙</span><h2>Backend</h2><span class="punto"></span></div>
+        <p class="valor" id="v-nodo">—</p>
+        <p class="etiqueta">Instancia que respondió</p>
+        <dl class="datos">
+          <div><dt>Activo</dt><dd id="v-activo">—</dd></div>
+          <div><dt>Versión</dt><dd id="v-version">—</dd></div>
+          <div><dt>Node.js</dt><dd id="v-node">—</dd></div>
+        </dl>
+      </article>
+
+      <article class="tarjeta" id="t-bd" data-estado="cargando">
+        <div class="tarjeta-cabeza"><span class="icono" aria-hidden="true">🗄</span><h2>Base de datos</h2><span class="punto"></span></div>
+        <p class="valor"><span id="v-latencia">—</span><small> ms</small></p>
+        <p class="etiqueta">Latencia de la consulta a RDS</p>
+        <dl class="datos">
+          <div><dt>Motor</dt><dd>PostgreSQL (RDS)</dd></div>
+          <div><dt>Conexión</dt><dd id="v-tls">—</dd></div>
+          <div><dt>Acceso</dt><dd>Privado (solo backend)</dd></div>
+        </dl>
+      </article>
+
+      <article class="tarjeta" id="t-efs" data-estado="cargando">
+        <div class="tarjeta-cabeza"><span class="icono" aria-hidden="true">🖼</span><h2>Almacenamiento</h2><span class="punto"></span></div>
+        <p class="valor" id="v-archivos">—</p>
+        <p class="etiqueta">Fotos subidas (EFS compartido)</p>
+        <dl class="datos">
+          <div><dt>Servicio</dt><dd>Amazon EFS</dd></div>
+          <div><dt>Ruta pública</dt><dd><code>/uploads/*</code></dd></div>
+          <div><dt>Validación</dt><dd>Tipo real, ≤ 2 MB</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="bloque" aria-labelledby="titulo-datos">
+      <h2 id="titulo-datos">Datos en RDS</h2>
+      <div class="conteos">
+        <div class="conteo"><span id="c-cartas">—</span><p>Cartas</p></div>
+        <div class="conteo"><span id="c-categorias">—</span><p>Categorías</p></div>
+        <div class="conteo"><span id="c-productos">—</span><p>Productos</p></div>
+      </div>
+    </section>
+
+    <section class="bloque" aria-labelledby="titulo-balanceo">
+      <h2 id="titulo-balanceo">Balanceo de carga en vivo</h2>
+      <p class="nota">Cada 5 segundos se consulta <code>/api/estado</code>; el ALB reparte las peticiones entre las instancias del Auto Scaling Group.</p>
+      <ol class="historial" id="historial" aria-live="polite"></ol>
+      <p class="nota" id="resumen-nodos"></p>
+    </section>
+
+    <section class="bloque" aria-labelledby="titulo-endpoints">
+      <h2 id="titulo-endpoints">Endpoints de la API</h2>
+      <div class="tabla-envoltura">
+        <table class="endpoints">
+          <thead><tr><th>Método</th><th>Ruta</th><th>Descripción</th><th>Protección</th></tr></thead>
+          <tbody>
+            <tr><td><span class="metodo get">GET</span></td><td><code>/api/health</code></td><td>Salud para el ALB y Docker</td><td><span class="prot publico">Público</span></td></tr>
+            <tr><td><span class="metodo get">GET</span></td><td><code>/api/estado</code></td><td>Estado de esta consola (JSON)</td><td><span class="prot publico">Público</span></td></tr>
+            <tr><td><span class="metodo get">GET</span></td><td><code>/api/sesion</code></td><td>Sesión actual y token CSRF</td><td><span class="prot publico">Público</span></td></tr>
+            <tr><td><span class="metodo post">POST</span></td><td><code>/api/login</code></td><td>Iniciar sesión</td><td><span class="prot csrf">CSRF</span></td></tr>
+            <tr><td><span class="metodo post">POST</span></td><td><code>/api/logout</code></td><td>Cerrar sesión</td><td><span class="prot csrf">CSRF</span></td></tr>
+            <tr><td><span class="metodo get">GET</span></td><td><code>/api/restaurantes/:id</code></td><td>Carta pública (cartas, categorías, productos)</td><td><span class="prot publico">Público</span></td></tr>
+            <tr><td><span class="metodo get">GET</span></td><td><code>/api/restaurantes/:id/carrito</code></td><td>Ver carrito (Read)</td><td><span class="prot publico">Sesión anónima</span></td></tr>
+            <tr><td><span class="metodo post">POST</span></td><td><code>/api/restaurantes/:id/carrito/items</code></td><td>Agregar producto (Create)</td><td><span class="prot csrf">CSRF</span></td></tr>
+            <tr><td><span class="metodo put">PATCH</span></td><td><code>/api/restaurantes/:id/carrito/items/:pos</code></td><td>Cambiar cantidad (Update)</td><td><span class="prot csrf">CSRF</span></td></tr>
+            <tr><td><span class="metodo delete">DELETE</span></td><td><code>/api/restaurantes/:id/carrito/items/:pos</code></td><td>Quitar un producto (Delete)</td><td><span class="prot csrf">CSRF</span></td></tr>
+            <tr><td><span class="metodo delete">DELETE</span></td><td><code>/api/restaurantes/:id/carrito</code></td><td>Vaciar carrito</td><td><span class="prot csrf">CSRF</span></td></tr>
+            <tr><td><span class="metodo post">POST</span></td><td><code>/api/restaurantes/:id/comentarios</code></td><td>Publicar comentario</td><td><span class="prot csrf">CSRF</span></td></tr>
+            <tr class="grupo"><td colspan="4">CRUD del panel · recurso = <code>cartas</code> | <code>categorias</code> | <code>productos</code></td></tr>
+            <tr><td><span class="metodo get">GET</span></td><td><code>/api/admin/:recurso</code></td><td>Listar (Read)</td><td><span class="prot admin">Admin</span></td></tr>
+            <tr><td><span class="metodo get">GET</span></td><td><code>/api/admin/:recurso/:id</code></td><td>Ver uno (Read)</td><td><span class="prot admin">Admin</span></td></tr>
+            <tr><td><span class="metodo post">POST</span></td><td><code>/api/admin/:recurso</code></td><td>Crear (Create)</td><td><span class="prot admin">Admin + CSRF</span></td></tr>
+            <tr><td><span class="metodo put">PUT</span></td><td><code>/api/admin/:recurso/:id</code></td><td>Editar (Update)</td><td><span class="prot admin">Admin + CSRF</span></td></tr>
+            <tr><td><span class="metodo delete">DELETE</span></td><td><code>/api/admin/:recurso/:id</code></td><td>Eliminar, borrado lógico (Delete)</td><td><span class="prot admin">Admin + CSRF</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <div class="contenedor">
+      <span>Consultas SQL parametrizadas · TLS a RDS verificado · Cookies Secure/HttpOnly/SameSite=Strict</span>
+      <span id="v-hora"></span>
+    </div>
+  </footer>
+</body>
+</html>

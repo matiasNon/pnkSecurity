@@ -23,7 +23,7 @@ describe('RF-03 Agregar, ver y quitar productos', () => {
     const r = await agregar(agente, csrf, 1, { iditems: 5 });
     expect(r.status).toBe(201);
     expect(r.body).toEqual({ ok: true, total: 1 });
-    expect(await verCarrito(agente)).toEqual([{ posicion: 1, id: 5, nombre: 'Lomo a lo Pobre', precio: 12500 }]);
+    expect(await verCarrito(agente)).toEqual([{ posicion: 1, id: 5, nombre: 'Lomo a lo Pobre', precio: 12500, cantidad: 1 }]);
   });
 
   test('el cliente no puede fijar el precio: los campos "precio" y "nombre" enviados se ignoran', async () => {
@@ -67,6 +67,76 @@ describe('RF-03 Agregar, ver y quitar productos', () => {
     await agregar(a.agente, a.csrf, 1, { iditems: 5 });
     const b = await agenteConToken();
     expect(await verCarrito(b.agente)).toEqual([]);
+  });
+});
+
+describe('RF-03 UPDATE del carrito: cantidad (PATCH)', () => {
+  const cambiar = (agente, csrf, pos, datos, rid = 1) =>
+    agente.patch(`/api/restaurantes/${rid}/carrito/items/${pos}`).set('X-CSRF-Token', csrf).send(datos);
+
+  test('agregar dos veces el mismo producto suma la cantidad en una sola linea', async () => {
+    const { agente, csrf } = await agenteConToken();
+    await agregar(agente, csrf, 1, { iditems: 5 });
+    const r = await agregar(agente, csrf, 1, { iditems: 5 });
+    expect(r.body).toEqual({ ok: true, total: 2 });
+    expect(await verCarrito(agente)).toEqual([{ posicion: 1, id: 5, nombre: 'Lomo a lo Pobre', precio: 12500, cantidad: 2 }]);
+  });
+
+  test('PATCH fija la cantidad de una linea y responde el total de unidades', async () => {
+    const { agente, csrf } = await agenteConToken();
+    await agregar(agente, csrf, 1, { iditems: 5 });
+    await agregar(agente, csrf, 1, { iditems: 2 });
+    const r = await cambiar(agente, csrf, 1, { cantidad: 4 });
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ ok: true, total: 5 });
+    const items = await verCarrito(agente);
+    expect(items.map((i) => [i.id, i.cantidad])).toEqual([[5, 4], [2, 1]]);
+    expect(items[0].precio).toBe(12500); // el precio unitario no cambia: el total lo calcula quien lo muestra
+  });
+
+  test('la cantidad no permite pasar el maximo de 50 unidades del carrito (409)', async () => {
+    const { agente, csrf } = await agenteConToken();
+    await agregar(agente, csrf, 1, { iditems: 5 });
+    await agregar(agente, csrf, 1, { iditems: 2 });
+    expect((await cambiar(agente, csrf, 1, { cantidad: 49 })).status).toBe(200);
+    const r = await cambiar(agente, csrf, 1, { cantidad: 50 });
+    expect(r.status).toBe(409);
+    expect(r.body.codigo).toBe('lleno');
+    expect((await agregar(agente, csrf, 1, { iditems: 2 })).status).toBe(409);
+  });
+
+  test.each([
+    ['cantidad 0 (para quitar se usa DELETE)', 1, { cantidad: 0 }, 400],
+    ['cantidad negativa', 1, { cantidad: -3 }, 400],
+    ['cantidad decimal', 1, { cantidad: 1.5 }, 400],
+    ['cantidad mayor a 50', 1, { cantidad: 51 }, 400],
+    ['cantidad como inyeccion', 1, { cantidad: '2 OR 1=1' }, 400],
+    ['cantidad como objeto', 1, { cantidad: { $gt: 0 } }, 400],
+    ['sin cantidad', 1, {}, 400],
+    ['posicion invalida', 'abc', { cantidad: 2 }, 400],
+    ['posicion inexistente', 99, { cantidad: 2 }, 404],
+  ])('%s', async (_n, pos, datos, estado) => {
+    const { agente, csrf } = await agenteConToken();
+    await agregar(agente, csrf, 1, { iditems: 5 });
+    expect((await cambiar(agente, csrf, pos, datos)).status).toBe(estado);
+    expect((await verCarrito(agente))[0].cantidad).toBe(1);
+  });
+
+  test('PATCH sin token CSRF responde 403 y solo acepta JSON (415)', async () => {
+    const { agente, csrf } = await agenteConToken();
+    await agregar(agente, csrf, 1, { iditems: 5 });
+    expect((await agente.patch('/api/restaurantes/1/carrito/items/1').send({ cantidad: 3 })).status).toBe(403);
+    expect((await agente.patch('/api/restaurantes/1/carrito/items/1').set('X-CSRF-Token', csrf)
+      .type('form').send({ cantidad: 3 })).status).toBe(415);
+    expect((await verCarrito(agente))[0].cantidad).toBe(1);
+  });
+
+  test('una sesion no puede cambiar el carrito de otra (cada carrito vive en su propia sesion)', async () => {
+    const a = await agenteConToken();
+    await agregar(a.agente, a.csrf, 1, { iditems: 5 });
+    const b = await agenteConToken();
+    expect((await cambiar(b.agente, b.csrf, 1, { cantidad: 9 })).status).toBe(404);
+    expect((await verCarrito(a.agente))[0].cantidad).toBe(1);
   });
 });
 

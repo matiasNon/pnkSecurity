@@ -5,13 +5,18 @@
 const { rutaFoto, entero } = require('../utils/validar');
 const { logSeguridad } = require('../services/logSeguridad');
 
+// Maximo de UNIDADES en el carrito (suma de cantidades): limita el tamano de la sesion (ASVS v5 V2.4 anti-automatizacion).
 const CARRITO_MAX_ITEMS = 50;
 
 // El carrito vive en la sesion y es POR RESTAURANTE (la version PHP mezclaba restaurantes distintos).
+// Cada linea: { posicion, id, nombre, precio, cantidad }. Las sesiones anteriores al CRUD no tenian cantidad (= 1).
 function leerCarrito(req, rid) {
   const todos = req.session.carritos;
-  return todos && Array.isArray(todos[rid]) ? todos[rid] : [];
+  const lineas = todos && Array.isArray(todos[rid]) ? todos[rid] : [];
+  return lineas.map((p) => ({ ...p, cantidad: Number.isInteger(p.cantidad) && p.cantidad > 0 ? p.cantidad : 1 }));
 }
+
+const unidades = (carrito) => carrito.reduce((s, p) => s + p.cantidad, 0);
 
 function guardarCarrito(req, rid, carrito) {
   req.session.carritos = { ...(req.session.carritos || {}), [rid]: carrito };
@@ -98,17 +103,24 @@ module.exports = (modelos) => {
       const itemId = entero(req.body && req.body.iditems);
       if (itemId === null) return res.status(400).json({ error: 'Solicitud inválida', codigo: 'invalida' });
       const carrito = leerCarrito(req, rid);
-      if (carrito.length >= CARRITO_MAX_ITEMS) {
+      if (unidades(carrito) >= CARRITO_MAX_ITEMS) {
         return res.status(409).json({ error: 'El carrito alcanzó el máximo de productos', codigo: 'lleno' });
       }
       const item = await modelos.carta.itemParaCarrito(itemId, rid);
       if (!item) return res.status(404).json({ error: 'Producto no encontrado', codigo: 'no_encontrado' });
-      const posicion = carrito.reduce((m, p) => Math.max(m, p.posicion), 0) + 1;
-      guardarCarrito(req, rid, [
-        ...carrito,
-        { posicion, id: item.id, nombre: String(item.nombre), precio: Number(item.precio) || 0 },
-      ]);
-      return res.status(201).json({ ok: true, total: carrito.length + 1 });
+      // Si el producto ya esta en el carrito se suma una unidad a su linea (nombre y precio siempre desde la BD).
+      const existente = carrito.find((p) => p.id === item.id);
+      let nuevo;
+      if (existente) {
+        nuevo = carrito.map((p) => (p === existente
+          ? { ...p, nombre: String(item.nombre), precio: Number(item.precio) || 0, cantidad: p.cantidad + 1 }
+          : p));
+      } else {
+        const posicion = carrito.reduce((m, p) => Math.max(m, p.posicion), 0) + 1;
+        nuevo = [...carrito, { posicion, id: item.id, nombre: String(item.nombre), precio: Number(item.precio) || 0, cantidad: 1 }];
+      }
+      guardarCarrito(req, rid, nuevo);
+      return res.status(201).json({ ok: true, total: unidades(nuevo) });
     } catch (e) {
       return next(e);
     }
@@ -119,6 +131,25 @@ module.exports = (modelos) => {
     if (pos === null) return res.status(400).json({ error: 'Solicitud inválida', codigo: 'invalida' });
     guardarCarrito(req, req.rid, leerCarrito(req, req.rid).filter((p) => p.posicion !== pos));
     return res.json({ ok: true });
+  }
+
+  // UPDATE del carrito: fija la cantidad de una linea (1..50, sin pasar el maximo de unidades del carrito).
+  // Para quitar la linea se usa DELETE; cantidad 0 o negativa se rechaza (400).
+  function cambiarCantidad(req, res) {
+    const pos = entero(req.params.pos);
+    const cantidad = entero(req.body && req.body.cantidad);
+    if (pos === null || cantidad === null || cantidad > CARRITO_MAX_ITEMS) {
+      return res.status(400).json({ error: 'Solicitud inválida', codigo: 'invalida' });
+    }
+    const carrito = leerCarrito(req, req.rid);
+    const linea = carrito.find((p) => p.posicion === pos);
+    if (!linea) return res.status(404).json({ error: 'Producto no encontrado', codigo: 'no_encontrado' });
+    if (unidades(carrito) - linea.cantidad + cantidad > CARRITO_MAX_ITEMS) {
+      return res.status(409).json({ error: 'El carrito alcanzó el máximo de productos', codigo: 'lleno' });
+    }
+    const nuevo = carrito.map((p) => (p === linea ? { ...p, cantidad } : p));
+    guardarCarrito(req, req.rid, nuevo);
+    return res.json({ ok: true, total: unidades(nuevo) });
   }
 
   function vaciarCarrito(req, res) {
@@ -143,6 +174,7 @@ module.exports = (modelos) => {
     mostrarCarrito,
     agregarItem,
     eliminarItem,
+    cambiarCantidad,
     vaciarCarrito,
     soloJson,
     CARRITO_MAX_ITEMS,

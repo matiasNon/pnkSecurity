@@ -1,4 +1,5 @@
-// Pagina del carrito (/restaurantes/:id/carrito): GET /api/restaurantes/:id/carrito; eliminar con DELETE.
+// Pagina del carrito (/restaurantes/:id/carrito): CRUD completo contra la API. Leer = GET, cambiar cantidad = PATCH
+// (botones - / +), eliminar = DELETE (agregar = POST, desde la carta).
 // Diseño moderno (carta-moderna.css + carrito-moderno.css): mismo encabezado y pie que la carta.
 (function () {
   'use strict';
@@ -25,23 +26,43 @@
   // Pinta las filas, el total, el contador y el aviso del garzon (solo si hay productos).
   function filas(items, ui) {
     vaciar(ui.cuerpo);
-    const suma = moneda(items.reduce((s, p) => s + p.precio, 0));
+    const unidades = items.reduce((s, p) => s + p.cantidad, 0);
+    const suma = moneda(items.reduce((s, p) => s + p.precio * p.cantidad, 0));
     ui.total.textContent = suma;
     ui.totalResumen.textContent = suma;
-    ui.cantidad.textContent = items.length === 1 ? '1 producto' : `${items.length} productos`;
+    ui.cantidad.textContent = unidades === 1 ? '1 producto' : `${unidades} productos`;
     ui.listo.classList.toggle('car-oculto', items.length === 0);
+    ui.aviso.textContent = '';
     if (items.length === 0) {
-      ui.cuerpo.appendChild(el('tr', { class: 'car-fila-vacia' }, el('td', { colspan: 4 },
+      ui.cuerpo.appendChild(el('tr', { class: 'car-fila-vacia' }, el('td', { colspan: 5 },
         el('div', { class: 'car-vacio' },
           el('i', { class: 'ti-shopping-cart car-vacio-icono', 'aria-hidden': 'true' }),
           el('p', { class: 'vacio', text: 'Tu carrito está vacío. Vuelve a la carta y elige tus productos.' }),
           el('a', { class: 'cm-btn cm-btn-verde', href: `/restaurantes/${rid}`, text: 'Ver la carta' })))));
     }
     for (const p of items) {
+      const cambiar = (delta) => async (e) => {
+        e.preventDefault();
+        const r = await pedir('PATCH', `/api/restaurantes/${rid}/carrito/items/${p.posicion}`, { cantidad: p.cantidad + delta });
+        if (r.status === 409) ui.aviso.textContent = 'El carrito alcanzó el máximo de 50 productos.';
+        recargar(ui, r.status === 409);
+      };
+      const precio = el('td', { class: 'car-precio', text: moneda(p.precio * p.cantidad) });
+      if (p.cantidad > 1) precio.appendChild(el('small', { class: 'car-unitario', text: `${moneda(p.precio)} c/u` }));
       ui.cuerpo.appendChild(el('tr', {},
         el('th', { scope: 'row', class: 'car-codigo' }, el('span', { class: 'car-chip', text: `#${p.id}` })),
         el('td', { class: 'car-nombre', text: p.nombre }),
-        el('td', { class: 'car-precio', text: moneda(p.precio) }),
+        el('td', { class: 'car-cant' }, el('div', { class: 'car-stepper', role: 'group', 'aria-label': `Cantidad de ${p.nombre}` },
+          el('button', {
+            type: 'button', class: 'car-paso menos', 'aria-label': `Quitar uno de ${p.nombre}`,
+            disabled: p.cantidad <= 1 ? 'disabled' : undefined, onclick: cambiar(-1), text: '−',
+          }),
+          el('output', { class: 'car-num', 'aria-live': 'polite', text: String(p.cantidad) }),
+          el('button', {
+            type: 'button', class: 'car-paso mas', 'aria-label': `Agregar uno más de ${p.nombre}`,
+            onclick: cambiar(1), text: '+',
+          }))),
+        precio,
         el('td', { class: 'car-accion' }, el('a', {
           class: 'elim car-eliminar', id: String(p.posicion), href: '#', role: 'button', 'aria-label': `Eliminar ${p.nombre}`,
           onclick: async (e) => { e.preventDefault(); await pedir('DELETE', `/api/restaurantes/${rid}/carrito/items/${p.posicion}`); recargar(ui); },
@@ -49,9 +70,11 @@
     }
   }
 
-  async function recargar(ui) {
+  async function recargar(ui, mantenerAviso) {
+    const aviso = ui.aviso.textContent;
     const r = await pedir('GET', `/api/restaurantes/${rid}/carrito`);
     if (r.ok) filas(r.datos.items, ui);
+    if (mantenerAviso) ui.aviso.textContent = aviso;
   }
 
   async function iniciar() {
@@ -70,6 +93,7 @@
       cantidad: el('span', { class: 'car-cantidad', text: '0 productos' }),
       listo: el('p', { class: 'car-listo' }, el('i', { class: 'ti-bell', 'aria-hidden': 'true' }),
         ' ¿Listo con tu pedido? Llama al garzón para solicitarlo.'),
+      aviso: el('p', { class: 'car-aviso', role: 'status' }),
     };
     ui.limpiar = el('a', {
       class: 'limpiar cm-btn car-btn-limpiar', href: '#', text: 'Eliminar Todo',
@@ -87,15 +111,16 @@
       el('table', { class: 'table car-tabla' },
         el('thead', {}, el('tr', {},
           el('th', { scope: 'col', text: 'Código' }), el('th', { scope: 'col', text: 'Producto' }),
-          el('th', { scope: 'col', text: 'Precio' }), el('th', { scope: 'col', class: 'car-accion', text: 'Acción' }))),
+          el('th', { scope: 'col', class: 'car-cant', text: 'Cantidad' }), el('th', { scope: 'col', text: 'Precio' }), el('th', { scope: 'col', class: 'car-accion', text: 'Acción' }))),
         ui.cuerpo,
-        el('tfoot', {}, el('tr', { class: 'fila-total' }, el('td', {}), el('th', { scope: 'row', text: 'Total' }), ui.total, el('td', {}))))));
+        el('tfoot', {}, el('tr', { class: 'fila-total' }, el('td', {}), el('th', { scope: 'row', text: 'Total' }), el('td', {}), ui.total, el('td', {}))))));
 
     const resumen = el('aside', { class: 'car-resumen', 'aria-label': 'Resumen del pedido' },
       el('h2', { class: 'car-resumen-titulo', text: 'Resumen' }),
       el('div', { class: 'car-resumen-linea' }, el('span', { text: 'Cantidad' }), ui.cantidad),
       el('div', { class: 'car-resumen-linea car-resumen-linea-total' }, el('span', { text: 'Total' }), ui.totalResumen),
       ui.listo,
+      ui.aviso,
       el('div', { class: 'car-resumen-acciones' },
         el('a', { class: 'cm-btn cm-btn-verde', href: `/restaurantes/${rid}`, text: 'Seguir eligiendo' }),
         ui.limpiar));

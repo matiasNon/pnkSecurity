@@ -72,7 +72,7 @@
   async function actualizarContador(animar) {
     const r = await pedir('GET', `/api/restaurantes/${rid}/carrito`);
     if (!r.ok || !contadorCarrito) return;
-    contadorCarrito.textContent = String(r.datos.items.length);
+    contadorCarrito.textContent = String(r.datos.items.reduce((s, p) => s + (p.cantidad || 1), 0));
     if (animar && !sinMovimiento) {
       contadorCarrito.classList.remove('cm-pulso');
       void contadorCarrito.offsetWidth; // reinicia la animacion

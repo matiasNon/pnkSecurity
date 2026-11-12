@@ -58,6 +58,28 @@ test.describe('Carta digital: flujo de un cliente y del administrador', () => {
     await captura(page, '04-carrito');
   });
 
+  test('RF-03 cambiar la cantidad con los botones - / + (UPDATE)', async ({ page }) => {
+    await page.goto('/restaurantes/1');
+    await page.locator('a.button[id="5"]').first().click();
+    await expect(page.locator('#myModal')).toBeVisible();
+    await page.locator('#myModal .close').click();
+    await page.goto('/restaurantes/1/carrito');
+    const fila = page.locator('tbody tr', { hasText: 'Lomo a lo Pobre' });
+    await expect(fila.locator('.car-num')).toHaveText('1');
+    await expect(fila.locator('.car-paso.menos')).toBeDisabled();
+    await fila.getByRole('button', { name: /Agregar uno más/ }).click();
+    await fila.getByRole('button', { name: /Agregar uno más/ }).click();
+    await expect(fila.locator('.car-num')).toHaveText('3');
+    await expect(fila.locator('.car-precio')).toContainText('$ 37.500');
+    await expect(fila.locator('.car-precio')).toContainText('$ 12.500 c/u');
+    await expect(page.locator('.car-cantidad')).toHaveText('3 productos');
+    await captura(page, '04b-carrito-cantidad');
+    await fila.getByRole('button', { name: /Quitar uno/ }).click();
+    await expect(fila.locator('.car-num')).toHaveText('2');
+    await expect(page.locator('tfoot .fila-total')).toContainText('$ 25.000');
+    await page.getByRole('link', { name: 'Eliminar Todo' }).click();
+  });
+
   test('RF-03 eliminar un producto y vaciar el carrito', async ({ page }) => {
     await page.goto('/restaurantes/1');
     await page.locator('a.button[id="2"]').first().click();
