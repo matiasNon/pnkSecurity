@@ -21,9 +21,18 @@ async function crearRolApp(pool, usuario, clave, log = console) {
     // Varias instancias pueden arrancar a la vez: un candado evita carreras al crear/alterar el rol.
     await c.query('SELECT pg_advisory_lock(hashtext($1))', ['pnk:rol-app']);
     const id = escapeIdentifier(usuario);
-    const opciones = `LOGIN PASSWORD ${escapeLiteral(clave)} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION`;
+    const clavePg = escapeLiteral(clave);
     const existe = (await c.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [usuario])).rowCount > 0;
-    await c.query(existe ? `ALTER ROLE ${id} WITH ${opciones}` : `CREATE ROLE ${id} WITH ${opciones} CONNECTION LIMIT 40`);
+    if (existe) {
+      // En RDS el usuario maestro no es superusuario: PostgreSQL no le deja cambiar SUPERUSER/REPLICATION de un rol ya
+      // creado (aunque sea al mismo valor). Los atributos quedaron fijos al crearlo; aqui solo se renueva la clave.
+      await c.query(`ALTER ROLE ${id} WITH LOGIN PASSWORD ${clavePg}`);
+      // Defensa: si alguien le hubiera dado privilegios de administracion, no se continua con ese rol.
+      const r = (await c.query('SELECT rolsuper, rolcreatedb, rolcreaterole FROM pg_roles WHERE rolname = $1', [usuario])).rows[0];
+      if (r.rolsuper || r.rolcreatedb || r.rolcreaterole) throw new Error(`El rol ${usuario} tiene privilegios de administracion`);
+    } else {
+      await c.query(`CREATE ROLE ${id} WITH LOGIN PASSWORD ${clavePg} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION CONNECTION LIMIT 40`);
+    }
 
     const bd = escapeIdentifier((await c.query('SELECT current_database() AS d')).rows[0].d);
     await c.query(`GRANT CONNECT ON DATABASE ${bd} TO ${id}`);
