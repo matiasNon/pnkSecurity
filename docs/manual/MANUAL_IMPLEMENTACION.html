@@ -74,7 +74,7 @@ Cloudflare es manual, como pide el requisito.</p>
   <tr><th>Requisito</th><th>Detalle</th></tr>
   <tr><td>Cuenta AWS</td><td>AWS Academy Learner Lab (región <b>us-east-1</b>), con el laboratorio iniciado (<i>Start Lab</i>, luz verde). Usa el rol <code>LabRole</code> y el perfil <code>LabInstanceProfile</code>.</td></tr>
   <tr><td>Terminal</td><td><b>AWS CloudShell</b> (ícono <code>&gt;_</code> en la consola de AWS). Ya trae AWS CLI, git, openssl y jq; no hay que instalar nada.</td></tr>
-  <tr><td>Rama del código</td><td><code>front-back-separados</code> (frontend y backend separados con la infraestructura AWS). Cuando <code>produccion</code> se actualice a esa rama, se puede usar <code>produccion</code>.</td></tr>
+  <tr><td>Rama del código</td><td><code>produccion</code> (la que despliega Jenkins y la que usa el script por defecto). <code>qa</code> y <code>front-back-separados</code> tienen el mismo código.</td></tr>
   <tr><td>Dominio (opcional)</td><td><code>pnkcarta.me</code> administrado en Cloudflare (sección 5). Sin dominio la app funciona en la dirección del ALB.</td></tr>
 </table>
 
@@ -134,14 +134,14 @@ con usuario no root, sistema de archivos de solo lectura, <code>cap_drop: ALL</c
 <div class="paso"><div class="n">1</div><div><h3>Abrir CloudShell</h3>
 <p>En el Learner Lab: <i>Start Lab</i> → esperar la luz verde → botón <b>AWS</b>. En la consola, región <b>N. Virginia (us-east-1)</b> → ícono <code>&gt;_</code> (CloudShell).</p></div></div>
 <div class="paso"><div class="n">2</div><div><h3>Clonar el repositorio</h3>
-<pre>git clone --branch front-back-separados https://github.com/matiasNon/pnkSecurity.git
+<pre>git clone --branch produccion https://github.com/matiasNon/pnkSecurity.git
 cd pnkSecurity</pre></div></div>
 <div class="paso"><div class="n">3</div><div><h3>Ejecutar el script</h3>
-<pre>RAMA=front-back-separados DOMINIO=carta.pnkcarta.me bash infra/aws/desplegar.sh</pre>
+<pre>DOMINIO=carta.pnkcarta.me bash infra/aws/desplegar.sh</pre>
 <p>El script muestra 5 etapas: credenciales → red (VPC por defecto y 2 subredes en zonas distintas) → certificado HTTPS importado a ACM
 → stack CloudFormation → espera a que el balanceador vea las 4 instancias sanas. Tarda <b>unos 9-12 minutos</b> (RDS es lo más lento).</p>
-<div class="caja ojo"><b>Importante:</b> la variable <code>RAMA</code> es obligatoria mientras <code>produccion</code> no tenga esta versión. Sin ella, las instancias
-clonarían código antiguo sin la infraestructura separada.</div></div></div>
+<div class="caja ok">Las instancias clonan la rama <code>produccion</code>. Para desplegar otra rama (por ejemplo para probar un cambio):
+<code>RAMA=qa DOMINIO=carta.pnkcarta.me bash infra/aws/desplegar.sh</code>. Ensayo del 12-11-2026: borrar 7 min 4 s, desplegar 9 min 11 s.</div></div></div>
 <div class="paso"><div class="n">4</div><div><h3>Anotar la dirección del ALB</h3>
 <p>Al final el script imprime la URL y deja todo en <code>infra/aws/salida.env</code> (sin secretos):</p>
 <pre>cat infra/aws/salida.env      <span class="c"># ALB_DNS=carta-digital-alb-XXXX.us-east-1.elb.amazonaws.com</span></pre></div></div>
@@ -206,10 +206,10 @@ atendiendo durante el parche y la reversión.</div>
 
 <h2>9. Borrar el ambiente y volver a desplegar</h2>
 <pre>bash infra/aws/destruir.sh                 <span class="c"># pide escribir BORRAR; ≈ 6-8 min</span>
-RAMA=front-back-separados DOMINIO=carta.pnkcarta.me bash infra/aws/desplegar.sh   <span class="c"># ≈ 9-12 min</span></pre>
+DOMINIO=carta.pnkcarta.me bash infra/aws/desplegar.sh   <span class="c"># ≈ 9-12 min</span></pre>
 <p><code>destruir.sh</code> elimina el stack completo (instancias, ALB, RDS sin respaldo final, EFS, secretos, Security Groups), el grupo de registros
 de CloudWatch y el certificado de ACM. Después de volver a desplegar, <b>el ALB tiene otro nombre</b>: actualizar el CNAME <code>carta</code> en Cloudflare
-(sección 5, paso 1). La base vuelve a los datos iniciales de las migraciones.</p>
+(sección 5, paso 1). La base vuelve a los datos iniciales de las migraciones, que ya incluyen la carta completa con fotos y portadas.</p>
 
 <h2>10. Solución de problemas</h2>
 <table>
