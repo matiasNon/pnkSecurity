@@ -17,14 +17,17 @@ unclassified:
 jobs:
   - script: >
       multibranchPipelineJob('carta-digital') {
-        description('Ramas: carta-digital-node (desarrollo), qa y produccion. Solo "produccion" despliega, y unicamente si pasan todos los filtros.')
+        description('Ramas: qa y produccion. Solo "produccion" despliega, y unicamente si pasan todos los filtros.')
         branchSources {
           branchSource {
             source {
               git {
                 id('carta-digital')
                 remote("${REPO_URL}")
-                traits { gitBranchDiscovery() }
+                traits {
+                  gitBranchDiscovery()
+                  headRegexFilter { regex('^(qa|produccion)$') }   // solo estas ramas corren la pipeline (las demas son de trabajo)
+                }
               }
             }
           }

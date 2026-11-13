@@ -209,10 +209,9 @@ pipeline {
           # Sin SSH: los Security Groups solo aceptan trafico del balanceador.
           if [ -f $SECRETOS/aws_stack ] && [ -f $SECRETOS/aws_credentials ]; then
             STACK=$(tr -d '[:space:]' < $SECRETOS/aws_stack)
-            docker run --rm --entrypoint bash -e STACK="$STACK" -e AWS_REGION=us-east-1 \
-              -v $SECRETOS/aws_credentials:/root/.aws/credentials:ro -v "$PWD/infra/aws":/scripts:ro \
-              amazon/aws-cli:2.31.0 /scripts/actualizar.sh backend frontend \
-              && { echo "Produccion (AWS alta disponibilidad) actualizada"; exit 0; }
+            # --volumes-from: el daemon de Docker no ve las rutas del contenedor de Jenkins, asi que el espacio de trabajo y los
+            # secretos se comparten con el volumen de Jenkins (con -v apareceria una carpeta vacia).
+            docker run --rm --volumes-from $JENKINS_CONTAINER --entrypoint bash -e STACK="$STACK" -e AWS_REGION=us-east-1               -e AWS_SHARED_CREDENTIALS_FILE=$SECRETOS/aws_credentials               amazon/aws-cli:2.31.0 "$WORKSPACE/infra/aws/actualizar.sh" backend frontend               && { echo "Produccion (AWS alta disponibilidad) actualizada"; exit 0; }
             echo "Fallo la actualizacion en AWS"; exit 1
           fi
           if [ -f $SECRETOS/ec2_host ]; then
