@@ -12,6 +12,11 @@ DATOS="${STACK}-datos"
 REGION="${AWS_REGION:-us-east-1}"
 export AWS_DEFAULT_REGION="$REGION" AWS_PAGER=""
 
+# Candado: este script nunca puede apuntar al stack de datos (RDS, EFS y claves).
+case "$STACK" in
+  *-datos) echo "STACK='$STACK' es un stack de datos: destruir.sh no lo borra (solo borra la aplicacion)."; exit 1;;
+esac
+
 existe() { aws cloudformation describe-stacks --stack-name "$1" >/dev/null 2>&1; }
 
 # Stack de la version antigua: trae RDS adentro, asi que borrarlo destruiria la base de datos.
