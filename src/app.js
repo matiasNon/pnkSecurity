@@ -69,7 +69,7 @@ function crearApp({ cfg, pool }) {
   api.use(sinCache);
   api.use(...middlewareSesion(cfg, pool));
   api.use(asegurarToken);
-  api.use(cargarUsuario(modelos.usuario));
+  api.use(cargarUsuario(modelos.usuario, cfg));
   api.use(
     rutasPublicas({
       carta: crearControladorCarta(modelos),
@@ -78,7 +78,7 @@ function crearApp({ cfg, pool }) {
       cuenta: crearControladorCuenta(modelos, pool, cfg),
     })
   );
-  api.use('/admin', rutasAdmin(crearControladorAdmin(modelos, subidas), subidas));
+  api.use('/admin', rutasAdmin(crearControladorAdmin(modelos, subidas), subidas, modelos.restaurante));
   app.use('/api', api);
 
   app.use(noEncontrado);

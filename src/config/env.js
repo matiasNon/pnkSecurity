@@ -35,6 +35,8 @@ const esquema = z.object({
   // Segundo administrador (restaurante 2, La Bahia): en prod se crea solo si esta clave existe (12+ caracteres).
   ADMIN2_PASSWORD: z.string().default(''),
   CLIENTE_PASSWORD: z.string().default(''),
+  // Super administrador: la cuenta admin con este correo gestiona TODOS los restaurantes (las demas solo el suyo).
+  SUPERADMIN_EMAIL: z.string().default('admin@gmail.com'),
 });
 
 function cargarConfig(entorno = process.env) {

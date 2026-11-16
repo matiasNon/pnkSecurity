@@ -4,7 +4,7 @@
 
 const express = require('express');
 const { validarCsrf } = require('../middleware/csrf');
-const { requiereSesion, requiereAdmin } = require('../middleware/autenticacion');
+const { requiereSesion, requiereAdmin, requiereSuperAdmin, restauranteActivo } = require('../middleware/autenticacion');
 
 function rutasPublicas({ carta, comentario, auth, cuenta }) {
   const router = express.Router();
@@ -40,15 +40,18 @@ function rutasPublicas({ carta, comentario, auth, cuenta }) {
 
 // Panel de administracion. Cadena de proteccion en TODAS: sesion valida -> rol admin -> (subida) -> token CSRF ->
 // controlador acotado al restaurante de la sesion.
-function rutasAdmin(admin, subidas) {
+function rutasAdmin(admin, subidas, modeloRestaurante) {
   const router = express.Router();
-  router.use(requiereSesion, requiereAdmin);
+  router.use(requiereSesion, requiereAdmin, restauranteActivo(modeloRestaurante));
 
   // multer va antes del CSRF solo para leer el cuerpo multipart; el token se valida antes de guardar nada
   // (la foto queda en memoria y se escribe en disco recien en el controlador).
   const escritura = [subidas.recibir, validarCsrf('admin_csrf_invalido')];
 
   router.get('/', admin.panel);
+  // Solo super admin: elegir el restaurante que se administra y crear restaurantes nuevos (antes de las rutas /:recurso).
+  router.put('/restaurante', requiereSuperAdmin, validarCsrf('admin_csrf_invalido'), admin.cambiarRestaurante);
+  router.post('/restaurantes', requiereSuperAdmin, validarCsrf('admin_csrf_invalido'), admin.crearRestaurante);
   router.get('/:recurso', admin.recursoDe, admin.lista);
   router.get('/:recurso/nuevo', admin.recursoDe, admin.nuevo);
   router.get('/:recurso/:id', admin.recursoDe, admin.editar);

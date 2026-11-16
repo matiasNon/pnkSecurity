@@ -55,6 +55,17 @@ const esquemaItem = z.object({
   categoria_id: enteroEntre(1, 2147483647),
 });
 
+// Alta de restaurante (solo super admin). El correo es opcional.
+const esquemaRestaurante = z.object({
+  nombre: linea(200),
+  rut: z.string().trim().regex(/^[0-9]{1,8}-[0-9kK]$/, 'Formato 12345678-9'),
+  fono: z.string().trim().regex(/^[0-9+() -]{6,45}$/, 'Teléfono no válido'),
+  email: z.preprocess((v) => (v == null || String(v).trim() === '' ? null : v), z.string().trim().email('Correo no válido').max(100).nullable()),
+  calle: linea(100),
+  numero: linea(15),
+  comuna: linea(100),
+});
+
 // Devuelve { datos } o { errores: { campo: mensaje } } para volver a mostrar el formulario.
 function validar(esquema, entrada) {
   const r = esquema.safeParse(entrada || {});
@@ -70,4 +81,4 @@ function validar(esquema, entrada) {
 }
 
 module.exports = {
-  linea, esquemaCarta, esquemaCategoria, esquemaItem, validar };
+  linea, esquemaCarta, esquemaCategoria, esquemaItem, esquemaRestaurante, validar };

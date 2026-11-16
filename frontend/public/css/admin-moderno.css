@@ -282,3 +282,29 @@
 @media (prefers-reduced-motion: reduce) {
 	.adm-kpi, .adm-tab, .adm-switch-input, .adm-switch-input::after { transition: none !important; }
 }
+
+/* ---------- Super admin: selector de restaurante y alta de restaurantes ---------- */
+.adm-selector-caja { display: inline-flex; align-items: center; gap: 8px; margin: 0; color: #fff; font-size: 14px; }
+.adm-selector-etiqueta { opacity: 0.85; font-weight: 600; }
+.adm-selector {
+	height: 40px;
+	max-width: 220px;
+	padding: 0 12px;
+	border-radius: 999px;
+	border: 2px solid transparent;
+	background: #fff;
+	color: var(--cm-azul-900);
+	font-weight: 700;
+	font-size: 15px;
+}
+.adm-selector:focus-visible { outline: none; border-color: var(--cm-verde-claro); }
+.adm-nuevo-rest { margin-bottom: 20px; padding: 16px 20px; }
+.adm-nuevo-rest > summary { cursor: pointer; font-weight: 800; color: var(--cm-azul); font-size: 17px; }
+.adm-nuevo-rest[open] > summary { margin-bottom: 14px; }
+.adm-rest-grilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px 18px; margin-bottom: 14px; }
+@media (max-width: 767px) {
+	.adm-selector-etiqueta { display: none; }
+	.adm-selector { max-width: 150px; }
+}
+.adm-marca-titulo, .cm-header-acciones .cm-saludo, .adm-selector-caja { white-space: nowrap; }
+.cm-header-acciones { flex-wrap: wrap; justify-content: flex-end; }

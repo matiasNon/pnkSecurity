@@ -28,6 +28,30 @@ module.exports = (pool) => ({
     return r.rows;
   },
 
+  // Alta de un restaurante con su direccion (una transaccion: o se crean las dos filas o ninguna). Devuelve el id nuevo.
+  async crear(d) {
+    const cx = await pool.connect();
+    try {
+      await cx.query('BEGIN');
+      const dir = await cx.query(
+        'INSERT INTO direcciones (calle, numero, comuna, region) VALUES ($1, $2, $3, $4) RETURNING id',
+        [d.calle, d.numero, d.comuna, d.region]
+      );
+      const r = await cx.query(
+        `INSERT INTO restaurantes (rut, nombre, fono, email, direccion_id)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [d.rut, d.nombre, d.fono, d.email, dir.rows[0].id]
+      );
+      await cx.query('COMMIT');
+      return r.rows[0].id;
+    } catch (e) {
+      await cx.query('ROLLBACK').catch(() => {});
+      throw e;
+    } finally {
+      cx.release();
+    }
+  },
+
   async existe(id) {
     const r = await pool.query('SELECT 1 FROM restaurantes WHERE id = $1 AND eliminado_en IS NULL', [id]);
     return r.rowCount > 0;

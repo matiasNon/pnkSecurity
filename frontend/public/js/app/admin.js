@@ -33,6 +33,48 @@
     return true;
   }
 
+  // ---------- Super admin: elegir restaurante y crear restaurantes ----------
+  // El backend decide quien es super admin y valida cada cambio; aqui solo se muestran los controles.
+  function selectorRestaurante() {
+    const { restaurante, restaurantes } = datosPanel;
+    const sel = el('select', { class: 'adm-selector', id: 'restaurante-activo', 'aria-label': 'Restaurante que administras' },
+      restaurantes.map((r) => el('option', { value: String(r.id), text: r.nombre, selected: r.id === restaurante.id ? 'selected' : null })));
+    sel.addEventListener('change', async () => {
+      sel.disabled = true;
+      const r = await pedir('PUT', '/api/admin/restaurante', { id: Number(sel.value) });
+      if (!r.ok) { sel.disabled = false; paginaError('No se pudo cambiar de restaurante'); return; }
+      location.href = '/admin'; // vuelve al resumen del restaurante elegido
+    });
+    return el('label', { class: 'adm-selector-caja' }, el('span', { class: 'adm-selector-etiqueta', text: 'Administrando:' }), sel);
+  }
+
+  function formularioRestaurante() {
+    const campos = [
+      ['nombre', 'Nombre del restaurante', 'text', 200], ['rut', 'RUT (12345678-9)', 'text', 10], ['fono', 'Teléfono', 'tel', 45],
+      ['email', 'Correo (opcional)', 'email', 100], ['calle', 'Calle', 'text', 100], ['numero', 'Número', 'text', 15], ['comuna', 'Comuna', 'text', 100],
+    ];
+    const form = el('form', { class: 'adm-form-nuevo-rest' },
+      el('div', { class: 'adm-rest-grilla' }, campos.map(([n, etiqueta, tipo, max]) => el('div', { class: 'adm-campo' },
+        el('label', { for: `rest-${n}` }, etiqueta),
+        el('input', { id: `rest-${n}`, name: n, type: tipo, maxlength: String(max), class: 'form-control', required: n === 'email' ? null : 'required' }),
+        el('small', { class: 'adm-error', role: 'alert', 'data-error': n, hidden: true })))),
+      el('p', { class: 'adm-error', role: 'alert', 'data-error': 'general', hidden: true }),
+      el('button', { type: 'submit', class: 'cm-btn cm-btn-verde', text: 'Crear restaurante' }));
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      form.querySelectorAll('[data-error]').forEach((x) => { x.hidden = true; x.textContent = ''; });
+      const cuerpo = Object.fromEntries(new FormData(form).entries());
+      const r = await pedir('POST', '/api/admin/restaurantes', cuerpo);
+      if (r.ok) { location.href = '/admin'; return; }
+      const errores = (r.datos && r.datos.errores) || { general: 'No se pudo crear el restaurante' };
+      for (const [campo, msg] of Object.entries(errores)) {
+        const x = form.querySelector(`[data-error="${campo}"]`) || form.querySelector('[data-error="general"]');
+        x.textContent = msg; x.hidden = false;
+      }
+    });
+    return el('details', { class: 'adm-tarjeta adm-nuevo-rest' }, el('summary', { text: '+ Crear restaurante nuevo' }), form);
+  }
+
   // ---------- Estructura comun: encabezado + navegacion + pie ----------
   function encabezado(activo) {
     const { usuario, restaurante } = datosPanel;
@@ -52,7 +94,8 @@
         el('div', { class: 'cm-header-acciones' },
           el('a', { class: 'cm-btn cm-btn-texto', href: '/restaurantes', title: 'Ver todos los restaurantes' },
             el('i', { class: 'ti-exchange-vertical', 'aria-hidden': 'true' }), ' Restaurantes'),
-          el('span', { class: 'cm-saludo', text: `Administrador: ${usuario.nombre}` }),
+          usuario.superadmin ? selectorRestaurante() : null,
+          el('span', { class: 'cm-saludo', text: usuario.superadmin ? 'Súper admin' : `Administrador: ${usuario.nombre}` }),
           el('a', { class: 'cm-btn cm-btn-claro', href: `/restaurantes/${restaurante.id}`, text: 'Ver la carta' }),
           salir)),
       el('nav', { class: 'adm-nav', 'aria-label': 'Secciones del panel' }, el('div', { class: 'cm-contenedor adm-nav-fila' },
@@ -97,10 +140,11 @@
         el('div', { class: 'adm-bienvenida-texto' },
           el('span', { class: 'adm-chip', text: `Restaurante #${restaurante.id}` }),
           el('h1', { text: 'Panel de administración' }),
-          el('p', {}, `Hola, ${usuario.nombre}. Desde aquí administras la carta de `, el('b', { text: restaurante.nombre }), '.')),
+          el('p', {}, `Hola, ${usuario.nombre}. `, usuario.superadmin ? 'Como súper admin puedes gestionar todos los restaurantes; ahora administras la carta de ' : 'Desde aquí administras la carta de ', el('b', { text: restaurante.nombre }), '.')),
         el('div', { class: 'adm-bienvenida-acciones' },
           el('a', { class: 'cm-btn cm-btn-verde', href: `/restaurantes/${restaurante.id}`, text: 'Ver mi carta pública' }),
           el('a', { class: 'cm-btn cm-btn-claro', href: '/restaurantes', text: 'Ver otros restaurantes' }))),
+      usuario.superadmin ? formularioRestaurante() : null,
       el('section', { class: 'adm-kpis' },
         tarjeta(SECCIONES[0], totales.cartas), tarjeta(SECCIONES[1], totales.categorias), tarjeta(SECCIONES[2], totales.productos)),
       el('section', { class: 'adm-consejos' },

@@ -1,9 +1,10 @@
 'use strict';
 // API del panel de administracion: CRUD de cartas, categorias y productos (JSON; la foto llega en multipart).
-// Todas las operaciones usan req.usuario.restaurante_id (de la sesion verificada en BD), nunca un id del cliente.
+// Todas las operaciones usan req.rid: el restaurante del admin (sesion verificada en BD) o, solo para el super admin,
+// el que eligio y quedo guardado en su sesion en el servidor; jamas un id recibido en cada peticion.
 
 const { entero, rutaFoto } = require('../utils/validar');
-const { esquemaCarta, esquemaCategoria, esquemaItem, validar } = require('../utils/formularios');
+const { esquemaCarta, esquemaCategoria, esquemaItem, esquemaRestaurante, validar } = require('../utils/formularios');
 const { logSeguridad, logError } = require('../services/logSeguridad');
 
 const MENSAJES = {
@@ -130,24 +131,50 @@ module.exports = (modelos, subidas) => {
   // GET /api/admin: resumen del panel (restaurante del admin y totales).
   async function panel(req, res, next) {
     try {
-      const rid = req.usuario.restaurante_id;
+      const rid = req.rid;
       const [cartas, categorias, items, restaurante] = await Promise.all([
         m.listarCartas(rid), m.listarCategorias(rid), m.listarItems(rid), modelos.restaurante.obtener(rid),
       ]);
+      const superadmin = Boolean(req.usuario.superadmin);
       res.json({
-        usuario: { nombre: req.usuario.nombre, rol: req.usuario.rol },
+        usuario: { nombre: req.usuario.nombre, rol: req.usuario.rol, superadmin },
         restaurante: { id: restaurante.id, nombre: restaurante.nombre },
+        // Solo el super admin recibe la lista para cambiar de restaurante.
+        restaurantes: superadmin ? (await modelos.restaurante.listar()).map((r) => ({ id: r.id, nombre: r.nombre })) : undefined,
         totales: { cartas: cartas.length, categorias: categorias.length, productos: items.length },
       });
     } catch (e) { next(e); }
   }
 
+  // PUT /api/admin/restaurante { id }: el super admin elige el restaurante que administra (queda en su sesion).
+  async function cambiarRestaurante(req, res, next) {
+    try {
+      const id = entero(req.body && req.body.id);
+      if (id === null || !(await modelos.restaurante.existe(id))) return res.status(404).json(NO_ENCONTRADO);
+      req.session.restauranteAdmin = id;
+      logSeguridad('ADMIN', 'restaurante_cambiado', { uid: req.usuario.id, id }, req);
+      return res.json({ ok: true, id });
+    } catch (e) { return next(e); }
+  }
+
+  // POST /api/admin/restaurantes: el super admin crea un restaurante y pasa a administrarlo.
+  async function crearRestaurante(req, res, next) {
+    try {
+      const { datos, errores } = validar(esquemaRestaurante, req.body);
+      if (errores) return res.status(400).json({ error: 'Revise los campos marcados', codigo: 'validacion', errores });
+      const id = await modelos.restaurante.crear({ ...datos, region: 'Coquimbo' });
+      req.session.restauranteAdmin = id;
+      logSeguridad('ADMIN', 'restaurante_creado', { uid: req.usuario.id, id }, req);
+      return res.status(201).json({ ok: true, id });
+    } catch (e) { return next(e); }
+  }
+
   // GET /api/admin/:recurso
   async function lista(req, res, next) {
     try {
-      const filas = await req.recurso.listar(req.usuario.restaurante_id);
+      const filas = await req.recurso.listar(req.rid);
       // La foto se entrega como URL validada (miniatura en la lista), nunca el nombre crudo del archivo.
-      const rid = req.usuario.restaurante_id;
+      const rid = req.rid;
       res.json({
         ...meta(req.recurso, req.nombreRecurso),
         filas: filas.map(({ foto, ...f }) => (req.recurso.multipart ? { ...f, fotoUrl: rutaFoto(rid, foto) } : f)),
@@ -158,7 +185,7 @@ module.exports = (modelos, subidas) => {
   // GET /api/admin/:recurso/nuevo -> campos del formulario (con las opciones de los select) y valores por defecto.
   async function nuevo(req, res, next) {
     try {
-      const campos = await req.recurso.campos(req.usuario.restaurante_id);
+      const campos = await req.recurso.campos(req.rid);
       res.json({ ...meta(req.recurso, req.nombreRecurso), campos, valores: { ...req.recurso.porDefecto }, fotoActual: null });
     } catch (e) { next(e); }
   }
@@ -166,7 +193,7 @@ module.exports = (modelos, subidas) => {
   // GET /api/admin/:recurso/:id -> campos y valores actuales del registro.
   async function editar(req, res, next) {
     try {
-      const rid = req.usuario.restaurante_id;
+      const rid = req.rid;
       const id = entero(req.params.id);
       const fila = id === null ? null : await req.recurso.obtener(rid, id);
       if (!fila) return res.status(404).json(NO_ENCONTRADO);
@@ -179,7 +206,7 @@ module.exports = (modelos, subidas) => {
   // Alta (POST) y modificacion (PUT) comparten el mismo flujo: validar -> (subir foto) -> guardar.
   // Errores de validacion: 400 { errores: { campo: mensaje } } para mostrarlos junto a cada campo.
   async function guardar(req, res, next) {
-    const rid = req.usuario.restaurante_id;
+    const rid = req.rid;
     const id = req.params.id === undefined ? null : entero(req.params.id);
     try {
       if (req.params.id !== undefined && id === null) return res.status(404).json(NO_ENCONTRADO);
@@ -222,12 +249,12 @@ module.exports = (modelos, subidas) => {
   async function eliminar(req, res, next) {
     try {
       const id = entero(req.params.id);
-      const ok = id !== null && await req.recurso.eliminar(req.usuario.restaurante_id, id);
+      const ok = id !== null && await req.recurso.eliminar(req.rid, id);
       if (!ok) return res.status(404).json(NO_ENCONTRADO);
       logSeguridad('ADMIN', `${req.nombreRecurso}_eliminado`, { uid: req.usuario.id, id }, req);
       return res.json({ ok: true, mensaje: MENSAJES.eliminado });
     } catch (e) { return next(e); }
   }
 
-  return { recursoDe, panel, lista, nuevo, editar, guardar, eliminar };
+  return { recursoDe, panel, cambiarRestaurante, crearRestaurante, lista, nuevo, editar, guardar, eliminar };
 };

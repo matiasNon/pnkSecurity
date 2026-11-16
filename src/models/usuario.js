@@ -12,7 +12,7 @@ module.exports = (pool) => ({
 
   async porId(id) {
     const r = await pool.query(
-      'SELECT id, nombre, rol, restaurante_id, habilitado FROM usuarios WHERE id = $1',
+      'SELECT id, nombre, email, rol, restaurante_id, habilitado FROM usuarios WHERE id = $1',
       [id]
     );
     return r.rows[0] || null;
