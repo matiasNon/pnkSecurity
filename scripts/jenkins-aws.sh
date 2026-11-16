@@ -44,15 +44,21 @@ cn -u "$U" "$J/api/json" || fallo "Jenkins no responde en $J (revisa la clave)."
 echo "Jenkins listo en $J"
 
 paso "3/6 Credenciales de AWS (portapapeles)"
-CRED="$(powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null | tr -d '\r')"
-for k in aws_access_key_id aws_secret_access_key aws_session_token; do
-  printf '%s' "$CRED" | grep -q "$k" || fallo "El portapapeles no tiene el bloque de AWS ($k falta). Copia el bloque [default] de AWS Academy -> AWS Details -> AWS CLI: Show."
-done
-printf '%s\n' "$CRED" | docker run --rm -i -v "$VOL":/j alpine sh -c 'cat > /j/pnk-secretos/aws_credentials && chmod 600 /j/pnk-secretos/aws_credentials' \
-  || fallo "No se pudieron guardar las credenciales en Jenkins."
-docker run --rm -v "$VOL":/j alpine sh -c "echo $STACK > /j/pnk-secretos/aws_stack"
-powershell.exe -NoProfile -Command "Set-Clipboard -Value ' '" >/dev/null 2>&1   # limpia el portapapeles
-echo "Credenciales guardadas en Jenkins (portapapeles limpiado)"
+if [ "${SKIP_CREDS:-0}" = "1" ]; then
+  echo "Se usan las credenciales ya guardadas en Jenkins (SKIP_CREDS=1)"
+else
+  CRED="$(powershell.exe -NoProfile -Command Get-Clipboard 2>/dev/null | tr -d '\r')"
+  for k in aws_access_key_id aws_secret_access_key aws_session_token; do
+    printf '%s' "$CRED" | grep -q "$k" || fallo "El portapapeles no tiene el bloque de AWS ($k falta). Copia el bloque de AWS Academy -> AWS Details -> AWS CLI: Show."
+  done
+  # Solo se guardan las 3 lineas de claves y se agrega siempre la cabecera [default] (a veces se copia sin ella).
+  { echo "[default]"; printf '%s\n' "$CRED" | grep -E '^aws_(access_key_id|secret_access_key|session_token)'; } \
+    | docker run --rm -i -v "$VOL":/j alpine sh -c 'cat > /j/pnk-secretos/aws_credentials && chmod 600 /j/pnk-secretos/aws_credentials' \
+    || fallo "No se pudieron guardar las credenciales en Jenkins."
+  docker run --rm -v "$VOL":/j alpine sh -c "echo $STACK > /j/pnk-secretos/aws_stack"
+  powershell.exe -NoProfile -Command "Set-Clipboard -Value ' '" >/dev/null 2>&1   # limpia el portapapeles
+  echo "Credenciales guardadas en Jenkins (portapapeles limpiado)"
+fi
 
 paso "4/6 Comprobando AWS"
 AWSCLI=(docker run --rm --volumes-from pnk-jenkins -e AWS_SHARED_CREDENTIALS_FILE=/var/jenkins_home/pnk-secretos/aws_credentials -e AWS_DEFAULT_REGION=us-east-1 -e AWS_PAGER= amazon/aws-cli:2.31.0)
