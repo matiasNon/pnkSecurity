@@ -314,7 +314,7 @@ Resources:
         MetadataOptions: { HttpTokens: required, HttpPutResponseHopLimit: 1, HttpEndpoint: enabled }
         BlockDeviceMappings:
           - DeviceName: /dev/sda1
-            Ebs: { VolumeSize: 12, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+            Ebs: { VolumeSize: 12, VolumeType: gp3, DeleteOnTermination: true }
         TagSpecifications:
           - ResourceType: instance
             Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-frontend' }, { Key: Capa, Value: frontend }]
@@ -358,7 +358,7 @@ Resources:
         MetadataOptions: { HttpTokens: required, HttpPutResponseHopLimit: 1, HttpEndpoint: enabled }
         BlockDeviceMappings:
           - DeviceName: /dev/sda1
-            Ebs: { VolumeSize: 16, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+            Ebs: { VolumeSize: 16, VolumeType: gp3, DeleteOnTermination: true }
         TagSpecifications:
           - ResourceType: instance
             Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-backend' }, { Key: Capa, Value: backend }]
