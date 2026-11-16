@@ -1,0 +1,100 @@
+/* =====================================================================================================
+   SELECCION DE RESTAURANTE (/restaurantes). Usa las variables y botones de carta-moderna.css.
+   Contraste: blanco/azul-900 14.6:1, texto/blanco 14.6:1, texto-suave/blanco 6.8:1, blanco/verde 5.0:1.
+   ===================================================================================================== */
+.rs-main { flex: 1 0 auto; }
+
+.rs-hero {
+	background: linear-gradient(135deg, var(--cm-azul-900) 0%, var(--cm-azul) 60%, var(--cm-azul-600) 100%);
+	color: #fff;
+	padding: 56px 0 72px;
+	text-align: center;
+}
+.rs-chip {
+	display: inline-block;
+	background: rgba(255, 255, 255, 0.14);
+	border: 1px solid rgba(255, 255, 255, 0.28);
+	color: #fff;
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	padding: 4px 14px;
+	border-radius: 999px;
+	margin-bottom: 14px;
+}
+.rs-hero h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 800; margin: 0 0 8px; color: #fff; }
+.rs-hero p { font-size: 18px; margin: 0 auto 26px; max-width: 560px; color: rgba(255, 255, 255, 0.88); }
+.rs-buscar { max-width: 460px; margin: 0 auto; }
+.rs-buscador {
+	width: 100%;
+	height: 52px;
+	padding: 0 22px;
+	border: 2px solid transparent;
+	border-radius: 999px;
+	font-size: 17px;
+	color: var(--cm-texto);
+	background: #fff;
+	box-shadow: var(--cm-sombra);
+}
+.rs-buscador:focus { outline: none; border-color: var(--cm-verde-claro); }
+
+.rs-lista { margin-top: -34px; padding-bottom: 56px; position: relative; }
+.rs-conteo {
+	display: inline-block;
+	background: #fff;
+	border: 1px solid var(--cm-borde);
+	color: var(--cm-texto-suave);
+	font-weight: 600;
+	font-size: 14px;
+	padding: 4px 14px;
+	border-radius: 999px;
+	margin: 0 0 20px;
+	box-shadow: 0 4px 14px -8px rgba(8, 42, 74, 0.3);
+}
+.rs-grilla {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+	gap: 24px;
+}
+.rs-tarjeta {
+	display: flex;
+	flex-direction: column;
+	background: #fff;
+	border: 1px solid var(--cm-borde);
+	border-radius: var(--cm-radio);
+	overflow: hidden;
+	box-shadow: var(--cm-sombra);
+	transition: transform 0.25s var(--cm-ease), box-shadow 0.25s var(--cm-ease);
+}
+.rs-tarjeta:hover { transform: translateY(-4px); box-shadow: 0 18px 36px -14px rgba(8, 42, 74, 0.45); }
+.rs-foto { display: block; aspect-ratio: 5 / 3; background: var(--cm-azul-100); overflow: hidden; }
+.rs-foto img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s var(--cm-ease); }
+.rs-tarjeta:hover .rs-foto img { transform: scale(1.05); }
+.rs-sin-cartas .rs-foto img { object-fit: contain; padding: 28px; }
+.rs-cuerpo { display: flex; flex-direction: column; gap: 8px; padding: 18px 20px 22px; flex: 1; }
+.rs-etiqueta {
+	align-self: flex-start;
+	background: #dcfce7;
+	color: #14532d;
+	font-size: 12px;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	padding: 3px 10px;
+	border-radius: 999px;
+}
+.rs-etiqueta.vacia { background: var(--cm-azul-100); color: var(--cm-azul); }
+.rs-nombre { font-size: 21px; font-weight: 800; color: var(--cm-azul-900); margin: 0; }
+.rs-direccion { color: var(--cm-texto-suave); font-size: 15px; margin: 0 0 8px; }
+.rs-ver { margin-top: auto; align-self: stretch; }
+.rs-vacio { grid-column: 1 / -1; text-align: center; color: var(--cm-texto-suave); padding: 40px 0; background: #fff; border-radius: var(--cm-radio); border: 1px dashed var(--cm-borde); }
+
+@media (max-width: 575px) {
+	.rs-hero { padding: 40px 0 60px; }
+	.rs-grilla { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.rs-tarjeta, .rs-foto img { transition: none !important; }
+	.rs-tarjeta:hover, .rs-tarjeta:hover .rs-foto img { transform: none; }
+}

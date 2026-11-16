@@ -13,6 +13,7 @@ function rutasPublicas({ carta, comentario, auth, cuenta }) {
   router.post('/login', carta.soloJson('login_tipo_contenido_rechazado'), validarCsrf('login_csrf_invalido'), auth.login);
   router.post('/logout', validarCsrf('logout_csrf_invalido'), auth.logout);
 
+  router.get('/restaurantes', carta.listarRestaurantes);
   router.get('/restaurantes/:id', carta.cargarRestaurante, carta.mostrarCarta);
   router.get('/restaurantes/:id/carrito', carta.cargarRestaurante, carta.mostrarCarrito);
 

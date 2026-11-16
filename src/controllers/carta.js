@@ -51,6 +51,26 @@ module.exports = (modelos) => {
     foto: rutaFoto(r.id, r.foto),
   });
 
+  // GET /api/restaurantes: listado publico para elegir restaurante (solo lectura, sin datos de contacto).
+  async function listarRestaurantes(req, res, next) {
+    try {
+      const filas = await modelos.restaurante.listar();
+      res.json({
+        restaurantes: filas.map((r) => ({
+          id: r.id,
+          nombre: r.nombre,
+          calle: r.calle,
+          numero: r.numero,
+          comuna: r.comuna,
+          cartas: r.cartas,
+          foto: rutaFoto(r.id, r.foto),
+        })),
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+
   const producto = (rid, p) => ({
     id: p.id,
     nombre: p.nombre,
@@ -170,6 +190,7 @@ module.exports = (modelos) => {
 
   return {
     cargarRestaurante,
+    listarRestaurantes,
     mostrarCarta,
     mostrarCarrito,
     agregarItem,

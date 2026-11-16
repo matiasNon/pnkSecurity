@@ -64,6 +64,8 @@
       el('a', { class: 'cm-logo', href: `/restaurantes/${r.id}`, 'aria-label': `Inicio de ${r.nombre}` },
         el('img', { src: '/img/logo.png', alt: 'PNK', width: '150', height: '42' })),
       el('div', { class: 'cm-header-acciones' },
+        el('a', { class: 'cm-btn cm-btn-texto cm-enlace-restaurantes', href: '/restaurantes', title: 'Cambiar de restaurante' },
+          el('i', { class: 'ti-exchange-vertical', 'aria-hidden': 'true' }), ' Restaurantes'),
         zonaSesion(),
         el('a', { class: 'cm-btn cm-btn-carrito', href: `/restaurantes/${r.id}/carrito` },
           icono('carrito'), el('span', { class: 'cm-carrito-texto', text: 'Productos Seleccionados' }), contadorCarrito))));

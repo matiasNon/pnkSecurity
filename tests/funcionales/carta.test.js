@@ -151,3 +151,24 @@ describe('Salud del servicio', () => {
     }
   });
 });
+
+describe('Listado publico de restaurantes (pagina de seleccion)', () => {
+  test('GET /api/restaurantes entrega los restaurantes con direccion y numero de cartas, sin datos de contacto', async () => {
+    const res = await request(env.app).get('/api/restaurantes');
+    expect(res.status).toBe(200);
+    const { restaurantes } = res.body;
+    expect(restaurantes.length).toBeGreaterThanOrEqual(2);
+    expect(restaurantes.map((r) => r.id)).toEqual([...restaurantes.map((r) => r.id)].sort((a, b) => a - b));
+    const r1 = restaurantes.find((r) => r.id === 1);
+    expect(r1).toMatchObject({ nombre: 'Afríca Restobar', comuna: 'La Serena' });
+    expect(r1.cartas).toBeGreaterThan(0);
+    for (const r of restaurantes) {
+      expect(r).not.toHaveProperty('fono');
+      expect(r).not.toHaveProperty('email');
+    }
+  });
+
+  test('no se ejecuta como si fuera un :id y es de solo lectura', async () => {
+    expect((await request(env.app).post('/api/restaurantes').send({})).status).toBeGreaterThanOrEqual(400);
+  });
+});
