@@ -284,6 +284,8 @@ a.button.cm-btn { padding-top: 0; padding-bottom: 0; text-transform: none; }
 	transition: opacity 0.45s var(--cm-ease), transform 0.45s var(--cm-ease);
 }
 .cm-slide.activa { opacity: 1; transform: none; }
+/* El atributo hidden no gana a display:grid: sin esto las diapositivas ocultas siguen ocupando espacio (hueco enorme en la portada). */
+.cm-slide[hidden] { display: none; }
 .cm-chip {
 	display: inline-block;
 	background: rgba(34, 197, 94, 0.18);

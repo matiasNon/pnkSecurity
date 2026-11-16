@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   Carta Digital PNK - alta disponibilidad en AWS con frontend y backend separados: ALB (HTTPS, enruta por ruta) +
-  ASG frontend (nginx, paginas estaticas) + ASG backend (API Node/Express) + RDS PostgreSQL 17 (TLS) +
-  EFS (fotos compartidas) + Secrets Manager. Todo el ambiente se crea y se borra con este stack
-  (infra/aws/desplegar.sh y infra/aws/destruir.sh). Solo Cloudflare queda manual.
+  ASG frontend (nginx, paginas estaticas) + ASG backend (API Node/Express). La BD (RDS PostgreSQL 17 con TLS), el EFS de
+  fotos y los secretos con las claves iniciales estan en OTRO stack, carta-digital-datos.yaml, para que borrar y volver a
+  desplegar la aplicacion (infra/aws/desplegar.sh y destruir.sh) no destruya los datos. Solo Cloudflare queda manual.
 
 Parameters:
   VpcId:
@@ -34,10 +34,6 @@ Parameters:
     Default: t3.micro
     AllowedValues: [t3.micro, t3.small, t3.medium]
     Description: Tipo de las instancias de ambos ASG (AWS Academy permite hasta 9 instancias a la vez).
-  ClaseBd:
-    Type: String
-    Default: db.t3.micro
-    AllowedValues: [db.t3.micro, db.t3.small, db.t4g.micro]
   FrontendMin:
     Type: Number
     Default: 2
@@ -54,11 +50,34 @@ Parameters:
     Type: Number
     Default: 3
     MinValue: 1
-  VersionPostgres:
+  # --- Datos persistentes: los entrega desplegar.sh desde el stack <nombre>-datos (RDS, EFS, secretos, SG de BD/EFS) ---
+  SecretoBd:
     Type: String
-    Default: '17.6'
-    AllowedPattern: '^17\.[0-9]+$'
-    Description: Version menor de PostgreSQL 17 (desplegar.sh usa la vigente por defecto en RDS).
+    Description: ARN del secreto del usuario maestro de RDS (stack de datos).
+  SecretoBdApp:
+    Type: String
+    Description: ARN del secreto del rol de la app en RDS (stack de datos).
+  SecretoAdmin:
+    Type: String
+    Description: ARN de la clave inicial de admin@gmail.com (stack de datos).
+  SecretoAdmin2:
+    Type: String
+    Description: ARN de la clave inicial de admin.bahia@gmail.com (stack de datos).
+  SecretoCliente:
+    Type: String
+    Description: ARN de la clave inicial de alondra@gmail.com (stack de datos).
+  ArchivosEfs:
+    Type: String
+    Description: Id del EFS de fotos (stack de datos).
+  SgBd:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security Group de RDS (stack de datos); aqui solo se le agrega la regla desde el backend.
+  SgEfs:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security Group de EFS (stack de datos); aqui solo se le agrega la regla desde el backend.
+  EndpointBdValor:
+    Type: String
+    Description: Direccion del endpoint de RDS (stack de datos).
   PerfilInstancia:
     Type: String
     Default: LabInstanceProfile
@@ -73,27 +92,6 @@ Conditions:
 
 Resources:
   # ---------------- Secretos (generados por AWS, nunca en el repo ni en el user-data) ----------------
-  SecretoBd:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Description: Usuario y clave de RDS (carta digital)
-      GenerateSecretString:
-        SecretStringTemplate: '{"username":"pnk_app"}'
-        GenerateStringKey: password
-        PasswordLength: 32
-        ExcludePunctuation: true
-
-  # Rol de la APLICACION con minimo privilegio (lo crea scripts/preparar-bd.js con el usuario maestro).
-  SecretoBdApp:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Description: Usuario y clave del rol de la app en RDS (sin DDL ni privilegios de administracion)
-      GenerateSecretString:
-        SecretStringTemplate: '{"username":"carta_app"}'
-        GenerateStringKey: password
-        PasswordLength: 32
-        ExcludePunctuation: true
-
   SecretoApp:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -102,36 +100,6 @@ Resources:
         SecretStringTemplate: '{"tipo":"sesion"}'
         GenerateStringKey: valor
         PasswordLength: 64
-        ExcludePunctuation: true
-
-  SecretoAdmin:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Description: Clave inicial de admin@gmail.com (solo se usa si la cuenta no existe)
-      GenerateSecretString:
-        SecretStringTemplate: '{"email":"admin@gmail.com"}'
-        GenerateStringKey: password
-        PasswordLength: 20
-        ExcludePunctuation: true
-
-  SecretoAdmin2:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Description: Clave inicial de admin.bahia@gmail.com (administrador del restaurante 2; solo se usa si la cuenta no existe)
-      GenerateSecretString:
-        SecretStringTemplate: '{"email":"admin.bahia@gmail.com"}'
-        GenerateStringKey: password
-        PasswordLength: 20
-        ExcludePunctuation: true
-
-  SecretoCliente:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Description: Clave inicial de alondra@gmail.com
-      GenerateSecretString:
-        SecretStringTemplate: '{"email":"alondra@gmail.com"}'
-        GenerateStringKey: password
-        PasswordLength: 20
         ExcludePunctuation: true
 
   # ---------------- Security Groups: cada capa solo acepta trafico de la capa anterior ----------------
@@ -163,76 +131,26 @@ Resources:
         - { IpProtocol: tcp, FromPort: 3000, ToPort: 3000, SourceSecurityGroupId: !Ref SgBalanceador, Description: API desde el ALB }
       Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-sg-backend' }]
 
-  SgBd:
-    Type: AWS::EC2::SecurityGroup
+  # ---------------- Acceso del backend a los datos (las reglas viven aqui: al borrar la app desaparecen) ----------------
+  IngresoBd:
+    Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      GroupDescription: RDS PostgreSQL - solo desde el backend
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - { IpProtocol: tcp, FromPort: 5432, ToPort: 5432, SourceSecurityGroupId: !Ref SgBackend, Description: PostgreSQL desde el backend }
-      Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-sg-bd' }]
+      GroupId: !Ref SgBd
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref SgBackend
+      Description: PostgreSQL desde el backend
 
-  SgEfs:
-    Type: AWS::EC2::SecurityGroup
+  IngresoEfs:
+    Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      GroupDescription: EFS - NFS solo desde el backend
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - { IpProtocol: tcp, FromPort: 2049, ToPort: 2049, SourceSecurityGroupId: !Ref SgBackend, Description: NFS desde el backend }
-      Tags: [{ Key: Name, Value: !Sub '${AWS::StackName}-sg-efs' }]
-
-  # ---------------- Base de datos: RDS PostgreSQL 17, privada, cifrada, TLS obligatorio ----------------
-  GrupoSubredesBd:
-    Type: AWS::RDS::DBSubnetGroup
-    Properties:
-      DBSubnetGroupDescription: Subredes de la BD de la carta digital
-      SubnetIds: [!Ref Subred1, !Ref Subred2]
-
-  BaseDatos:
-    Type: AWS::RDS::DBInstance
-    DeletionPolicy: Delete
-    UpdateReplacePolicy: Delete
-    Properties:
-      DBInstanceIdentifier: !Sub '${AWS::StackName}-bd'
-      Engine: postgres
-      EngineVersion: !Ref VersionPostgres
-      DBInstanceClass: !Ref ClaseBd
-      AllocatedStorage: '20'
-      StorageType: gp3
-      StorageEncrypted: true
-      DBName: pnk_carta
-      MasterUsername: !Sub '{{resolve:secretsmanager:${SecretoBd}:SecretString:username}}'
-      MasterUserPassword: !Sub '{{resolve:secretsmanager:${SecretoBd}:SecretString:password}}'
-      DBSubnetGroupName: !Ref GrupoSubredesBd
-      VPCSecurityGroups: [!Ref SgBd]
-      PubliclyAccessible: false
-      MultiAZ: false
-      BackupRetentionPeriod: 1
-      DeletionProtection: false
-      AutoMinorVersionUpgrade: true
-
-  # ---------------- Fotos del panel: EFS compartido por todas las instancias ----------------
-  ArchivosEfs:
-    Type: AWS::EFS::FileSystem
-    DeletionPolicy: Delete
-    Properties:
-      Encrypted: true
-      PerformanceMode: generalPurpose
-      FileSystemTags: [{ Key: Name, Value: !Sub '${AWS::StackName}-fotos' }]
-
-  MontajeEfs1:
-    Type: AWS::EFS::MountTarget
-    Properties:
-      FileSystemId: !Ref ArchivosEfs
-      SubnetId: !Ref Subred1
-      SecurityGroups: [!Ref SgEfs]
-
-  MontajeEfs2:
-    Type: AWS::EFS::MountTarget
-    Properties:
-      FileSystemId: !Ref ArchivosEfs
-      SubnetId: !Ref Subred2
-      SecurityGroups: [!Ref SgEfs]
+      GroupId: !Ref SgEfs
+      IpProtocol: tcp
+      FromPort: 2049
+      ToPort: 2049
+      SourceSecurityGroupId: !Ref SgBackend
+      Description: NFS desde el backend
 
   # ---------------- Balanceador (ALB) ----------------
   Balanceador:
@@ -527,7 +445,7 @@ Resources:
 
   AsgBackend:
     Type: AWS::AutoScaling::AutoScalingGroup
-    DependsOn: [MontajeEfs1, MontajeEfs2, ReglaApi]
+    DependsOn: [IngresoBd, IngresoEfs, ReglaApi]
     Properties:
       AutoScalingGroupName: !Sub '${AWS::StackName}-asg-back'
       VPCZoneIdentifier: [!Ref Subred1, !Ref Subred2]
@@ -586,4 +504,4 @@ Outputs:
     Description: Clave inicial del administrador del restaurante 2 (admin.bahia@gmail.com)
     Value: !Ref SecretoAdmin2
   EndpointBd:
-    Value: !GetAtt BaseDatos.Endpoint.Address
+    Value: !Ref EndpointBdValor

@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # Crea TODO el ambiente de la carta digital en AWS con un solo comando:
-#   VPC por defecto -> certificado HTTPS en ACM -> stack CloudFormation (Security Groups por capa, RDS PostgreSQL 17,
-#   EFS, Secrets Manager, ALB con reglas por ruta, 2 Launch Templates y 2 Auto Scaling Groups: frontend y backend)
-#   -> cada instancia clona la rama, construye su imagen y levanta su contenedor.
+#   VPC por defecto -> certificado HTTPS en ACM -> DOS stacks de CloudFormation:
+#     * <STACK>-datos (persistente): RDS PostgreSQL 17, EFS de fotos y secretos. Solo se crea si NO existe: si ya esta, se
+#       reutiliza tal cual (con sus datos) y el despliegue es mucho mas corto.
+#     * <STACK> (la aplicacion): Security Groups por capa, ALB con reglas por ruta, 2 Launch Templates y 2 Auto Scaling
+#       Groups (frontend y backend). Cada instancia clona la rama, construye su imagen y levanta su contenedor.
 # Al terminar deja la direccion fija del ambiente (nombre DNS del ALB) en infra/aws/salida.env: la usan los demas
 # scripts y es el destino del CNAME de Cloudflare. Cambia solo si se borra y se vuelve a crear el stack.
 # Uso (en AWS CloudShell, region us-east-1):
 #   git clone --branch produccion https://github.com/matiasNon/pnkSecurity.git && cd pnkSecurity
 #   bash infra/aws/desplegar.sh                     # rama produccion
 #   RAMA=qa DOMINIO=carta.midominio.me bash infra/aws/desplegar.sh
-# Borrar todo: bash infra/aws/destruir.sh
+# Borrar la aplicacion (la BD se conserva): bash infra/aws/destruir.sh   |   borrar TAMBIEN la BD: TODO=1 bash infra/aws/destruir.sh
 set -euo pipefail
 
 STACK="${STACK:-carta-digital}"
@@ -17,7 +19,9 @@ REGION="${AWS_REGION:-us-east-1}"
 RAMA="${RAMA:-produccion}"   # para esta version separada: RAMA=front-back-separados
 DOMINIO="${DOMINIO:-}"
 REPO="${REPO:-https://github.com/matiasNon/pnkSecurity.git}"
+DATOS="${STACK}-datos"
 PLANTILLA="$(cd "$(dirname "$0")" && pwd)/carta-digital.yaml"
+PLANTILLA_DATOS="$(cd "$(dirname "$0")" && pwd)/carta-digital-datos.yaml"
 export AWS_DEFAULT_REGION="$REGION" AWS_PAGER=""
 
 paso() { printf '\n\033[1;36m== %s\033[0m\n' "$*"; }
@@ -55,11 +59,31 @@ PG=$(aws rds describe-db-engine-versions --engine postgres --engine-version 17 -
   --query 'DBEngineVersions[0].EngineVersion' --output text)
 echo "PostgreSQL en RDS: $PG"
 
-paso "4/5 Creando el stack $STACK (RDS tarda ~6-8 min; las instancias construyen la app en paralelo)"
+existe() { aws cloudformation describe-stacks --stack-name "$1" >/dev/null 2>&1; }
+# Un stack antiguo (todo en uno) trae la BD dentro: hay que borrarlo (destruir.sh) para pasar al esquema con datos aparte.
+if existe "$STACK" && aws cloudformation describe-stack-resource --stack-name "$STACK" --logical-resource-id BaseDatos >/dev/null 2>&1; then
+  echo "El stack $STACK es de la version antigua (incluye la BD). Ejecuta destruir.sh y vuelve a desplegar para pasar a datos aparte."; exit 1
+fi
+
+paso "4/5 Datos ($DATOS) y aplicacion ($STACK)"
+if existe "$DATOS"; then
+  echo "Se reutiliza $DATOS (base de datos, EFS y secretos existentes: no se toca ni se recrea)."
+else
+  echo "Creando $DATOS (RDS tarda ~6-8 min; solo la primera vez)..."
+  aws cloudformation deploy --stack-name "$DATOS" --template-file "$PLANTILLA_DATOS" --no-fail-on-empty-changeset \
+    --tags Proyecto=carta-digital \
+    --parameter-overrides VpcId="$VPC" Subred1="${SUBREDES[0]}" Subred2="${SUBREDES[1]}" NombreApp="$STACK" VersionPostgres="$PG"
+fi
+dsalida() { aws cloudformation describe-stacks --stack-name "$DATOS" --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+
+echo "Creando $STACK (balanceador e instancias; las instancias construyen la app en paralelo)..."
 aws cloudformation deploy --stack-name "$STACK" --template-file "$PLANTILLA" --no-fail-on-empty-changeset \
   --tags Proyecto=carta-digital \
   --parameter-overrides VpcId="$VPC" Subred1="${SUBREDES[0]}" Subred2="${SUBREDES[1]}" \
-    CertificadoArn="$CERT" VersionPostgres="$PG" Rama="$RAMA" RepoUrl="$REPO" DominioPublico="$DOMINIO"
+    CertificadoArn="$CERT" Rama="$RAMA" RepoUrl="$REPO" DominioPublico="$DOMINIO" \
+    SecretoBd="$(dsalida SecretoBd)" SecretoBdApp="$(dsalida SecretoBdApp)" SecretoAdmin="$(dsalida SecretoAdmin)" \
+    SecretoAdmin2="$(dsalida SecretoAdmin2)" SecretoCliente="$(dsalida SecretoCliente)" ArchivosEfs="$(dsalida ArchivosEfs)" \
+    SgBd="$(dsalida SgBd)" SgEfs="$(dsalida SgEfs)" EndpointBdValor="$(dsalida EndpointBd)"
 
 salida() { aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
 TG_FRONT=$(salida GrupoFrontendArn)
@@ -113,7 +137,7 @@ cat <<FIN
  URL:            $(salida Url)
  Balanceador:    $DNS   (direccion fija; CNAME para Cloudflare)
  Guardado en:    infra/aws/salida.env
- Base de datos:  $(salida EndpointBd)   (privada, TLS)
+ Base de datos:  $(salida EndpointBd)   (privada, TLS; stack $DATOS, se conserva al destruir)
  Admin:          admin@gmail.com   clave: ${ADMIN}   (restaurante 1)
  Admin 2:        admin.bahia@gmail.com   clave: ${ADMIN2}   (restaurante 2)
                  (anotarlas; tambien quedan en Secrets Manager)
