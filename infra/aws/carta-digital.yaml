@@ -114,6 +114,16 @@ Resources:
         PasswordLength: 20
         ExcludePunctuation: true
 
+  SecretoAdmin2:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Clave inicial de admin.bahia@gmail.com (administrador del restaurante 2; solo se usa si la cuenta no existe)
+      GenerateSecretString:
+        SecretStringTemplate: '{"email":"admin.bahia@gmail.com"}'
+        GenerateStringKey: password
+        PasswordLength: 20
+        ExcludePunctuation: true
+
   SecretoCliente:
     Type: AWS::SecretsManager::Secret
     Properties:
@@ -455,6 +465,7 @@ Resources:
                 echo "DB_HOST=$DB_HOST"; echo "DB_PORT=5432"; echo "DB_NAME=pnk_carta"
                 echo "SESSION_SECRET=$(secreto "${SecretoApp}" valor)"
                 echo "ADMIN_PASSWORD=$(secreto "${SecretoAdmin}" password)"
+                echo "ADMIN2_PASSWORD=$(secreto "${SecretoAdmin2}" password)"
                 echo "CLIENTE_PASSWORD=$(secreto "${SecretoCliente}" password)"
                 echo "PUBLIC_HOST=${Host}"; echo "FORCE_HTTPS=1"
               }
@@ -571,5 +582,8 @@ Outputs:
   SecretoAdminArn:
     Description: Clave inicial del administrador (desplegar.sh la muestra)
     Value: !Ref SecretoAdmin
+  SecretoAdmin2Arn:
+    Description: Clave inicial del administrador del restaurante 2 (admin.bahia@gmail.com)
+    Value: !Ref SecretoAdmin2
   EndpointBd:
     Value: !GetAtt BaseDatos.Endpoint.Address

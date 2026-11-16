@@ -12,6 +12,10 @@ function cuentasIniciales(cfg) {
     if (cfg.ADMIN_PASSWORD.length >= 12) {
       cuentas.push({ nombre: 'Administrador', email: 'admin@gmail.com', password: cfg.ADMIN_PASSWORD, rol: 'admin', restaurante_id: 1 });
     }
+    // Administrador del restaurante 2 (solo gestiona La Bahia; no tiene acceso al restaurante 1). Clave aleatoria de Secrets Manager.
+    if ((cfg.ADMIN2_PASSWORD || '').length >= 12) {
+      cuentas.push({ nombre: 'Admin La Bahía', email: 'admin.bahia@gmail.com', password: cfg.ADMIN2_PASSWORD, rol: 'admin', restaurante_id: 2 });
+    }
     if (cfg.CLIENTE_PASSWORD.length >= 12) {
       cuentas.push({ nombre: 'Alondra', email: 'alondra@gmail.com', password: cfg.CLIENTE_PASSWORD, rol: 'cliente', restaurante_id: null });
     }
@@ -42,7 +46,7 @@ async function sembrarUsuarios(pool, cfg, log = console) {
   }
 }
 
-module.exports = { sembrarUsuarios };
+module.exports = { sembrarUsuarios, cuentasIniciales };
 
 if (require.main === module) {
   const { cargarConfig } = require('../src/config/env');

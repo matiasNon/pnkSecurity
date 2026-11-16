@@ -103,6 +103,7 @@ printf '  %-28s ' "http:// -> https://"; curl -s -o /dev/null -m 10 -w '%{http_c
 
 ADMIN=$(aws secretsmanager get-secret-value --secret-id "$(salida SecretoAdminArn)" --query SecretString --output text \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["password"])')
+ADMIN2=$(aws secretsmanager get-secret-value --secret-id "$(salida SecretoAdmin2Arn)" --query SecretString --output text 2>/dev/null   | python3 -c 'import json,sys; print(json.load(sys.stdin)["password"])' 2>/dev/null || echo "(ver Secrets Manager)")
 min=$(( ($(date +%s) - inicio) / 60 ))
 
 cat <<FIN
@@ -113,8 +114,9 @@ cat <<FIN
  Balanceador:    $DNS   (direccion fija; CNAME para Cloudflare)
  Guardado en:    infra/aws/salida.env
  Base de datos:  $(salida EndpointBd)   (privada, TLS)
- Admin:          admin@gmail.com   clave: ${ADMIN}
-                 (anotarla; tambien queda en Secrets Manager)
+ Admin:          admin@gmail.com   clave: ${ADMIN}   (restaurante 1)
+ Admin 2:        admin.bahia@gmail.com   clave: ${ADMIN2}   (restaurante 2)
+                 (anotarlas; tambien quedan en Secrets Manager)
  El certificado es autofirmado: el navegador pedira aceptarlo
  hasta configurar Cloudflare (docs/CLOUDFLARE.md).
 ============================================================

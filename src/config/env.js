@@ -32,6 +32,8 @@ const esquema = z.object({
 
   // Credenciales iniciales de scripts/seed-usuarios.js (en prod son obligatorias y no hay valores por defecto).
   ADMIN_PASSWORD: z.string().default(''),
+  // Segundo administrador (restaurante 2, La Bahia): en prod se crea solo si esta clave existe (12+ caracteres).
+  ADMIN2_PASSWORD: z.string().default(''),
   CLIENTE_PASSWORD: z.string().default(''),
 });
 
