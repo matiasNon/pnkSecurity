@@ -11,7 +11,7 @@
 #   git clone --branch produccion https://github.com/matiasNon/pnkSecurity.git && cd pnkSecurity
 #   bash infra/aws/desplegar.sh                     # rama produccion
 #   RAMA=qa DOMINIO=carta.midominio.me bash infra/aws/desplegar.sh
-# Borrar la aplicacion (la BD se conserva): bash infra/aws/destruir.sh   |   borrar TAMBIEN la BD: TODO=1 bash infra/aws/destruir.sh
+# Borrar la aplicacion (la BD NUNCA se borra con estos scripts): bash infra/aws/destruir.sh
 set -euo pipefail
 
 STACK="${STACK:-carta-digital}"
