@@ -2,13 +2,13 @@
 
 Registro de lo que se toco la madrugada de la evaluacion. No contiene claves.
 
-## 1. Cloudflare - cuenta M3684410 (dominio academiafightclub.cl)  <- ESTE es el que hay que revertir
+## 1. Cloudflare - cuenta del dominio academiafightclub.cl  <- ESTE es el que hay que revertir
 Se uso por una sola vez porque `pnkcarta.me` esta en la cuenta de Cloudflare de Savka y no se pudo editar.
 
 | Que | Valor |
 |---|---|
-| Cuenta | M3684410@gmail.com (zona `academiafightclub.cl`, plan Free) |
-| Registro creado | Tipo **CNAME**, nombre **`carta`**, destino `carta-digital-alb-869533467.us-east-1.elb.amazonaws.com`, **Proxied** (nube naranja), TTL Auto |
+| Cuenta | cuenta propia de Cloudflare (zona `academiafightclub.cl`, plan Free) |
+| Registro creado | Tipo **CNAME**, nombre **`carta`**, destino = nombre DNS del balanceador vigente (cambia en cada borrar y redesplegar), **Proxied** (nube naranja), TTL Auto |
 | URL resultante | https://carta.academiafightclub.cl/restaurantes/1 |
 | NO se cambio | Modo SSL/TLS (ya era **Full**), los 3 registros existentes (TXT, Worker apex y Worker www), ni ninguna otra configuracion |
 
@@ -23,9 +23,9 @@ el nombre del balanceador como nombre publico).
 1. **Disco raiz sin cifrar** (`infra/aws/carta-digital.yaml`, commit `9608c4f`): las plantillas de lanzamiento tenian `Encrypted: true` y los Auto Scaling Groups
    fallaban con `Client.InternalError` desde el 13/11. Se aplico al stack con un change set (`quitar-cifrado-disco`). Para revertir: volver a poner
    `Encrypted: true` en las dos lineas de `BlockDeviceMappings` (no recomendado: vuelve el fallo).
-2. **Prueba de borrar y redesplegar** (7 min destruir + 9 min desplegar): el stack `carta-digital`, la RDS y el certificado de ACM se borraron y se
-   recrearon. Cambio la direccion del balanceador (de `carta-digital-alb-79429219` a `carta-digital-alb-869533467`), la clave de admin (nueva en Secrets Manager)
-   y se perdieron los datos de la base anterior (comentarios).
+2. **Pruebas de borrar y redesplegar:** la primera (version antigua, todo en un stack) borro tambien la RDS y se perdieron los datos de prueba.
+   Desde `bdbb121` la BD, el EFS y las claves viven en el stack aparte `carta-digital-datos` y `destruir.sh` no lo toca: la segunda prueba
+   conservo la misma RDS y los datos (una carta de prueba creada antes del borrado seguia despues). Cambia solo la direccion del balanceador.
 3. **Instancias de prueba**: se lanzaron y se terminaron 2 `t3.micro` sueltas (`prueba-cifrado-true-borrar` y `prueba-cifrado-false-borrar`). No queda nada.
 4. **Prueba de alta disponibilidad**: se termino a proposito 1 instancia backend; el Auto Scaling la reemplazo solo y el sitio no tuvo ninguna peticion fallida.
 
@@ -49,3 +49,9 @@ Para revertir uno: `git revert <commit>` y push (no usar `--force`).
 ## 6. Pendiente de limpieza tras la evaluacion
 - Borrar el CNAME `carta` de `academiafightclub.cl` (punto 1).
 - Rotar las claves que aparecieron en los chats pegados.
+
+## 7. Despues de la prueba de borrar y redesplegar con datos aparte
+- `destruir.sh` borro solo `carta-digital` (aplicacion); `carta-digital-datos` (RDS, EFS, claves) se conservo. El CNAME `carta` se edito al balanceador nuevo
+  (sigue Proxied). Para revertir el dominio sigue valiendo el punto 1 (borrar el CNAME `carta`).
+- Para borrar tambien los datos hay que eliminar a mano el stack `carta-digital-datos` desde la consola de CloudFormation (los scripts no lo hacen).
+- Archivos nuevos: `scripts/demo-evaluacion.sh`, `scripts/menu-evaluacion.sh`, `docs/GUION_EVALUACION.md`.

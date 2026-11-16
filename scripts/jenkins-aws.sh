@@ -94,7 +94,7 @@ curl -s -u "$U" "$J/job/carta-digital/job/produccion/$AHORA/consoleText" | grep 
 ALB="$("${AWSCLI[@]}" cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?contains(OutputKey,'Balanceador')||contains(OutputKey,'Url')].OutputValue" --output text 2>/dev/null)"
 echo
 if [ "$RES" = "SUCCESS" ]; then
-  printf '\033[1;32mLISTO: produccion desplegada en AWS.\033[0m  https://carta.pnkcarta.me/restaurantes/1   %s\n' "$ALB"
+  printf '\033[1;32mLISTO: produccion desplegada en AWS.\033[0m  %s   %s\n' "${URL_PUBLICA:-https://carta.academiafightclub.cl/restaurantes/1}" "$ALB"
 else
   printf '\033[1;31mResultado: %s. Revisa la consola: %s/job/carta-digital/job/produccion/%s/console\033[0m\n' "$RES" "$J" "$AHORA"
   exit 1
