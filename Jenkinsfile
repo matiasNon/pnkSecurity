@@ -138,9 +138,18 @@ pipeline {
               sh '''
                 set +x   # evita que la clave NVD se imprima en el log de la consola
                 mkdir -p reports/seguridad/dependency-check
-                docker run --rm -u root --volumes-from $JENKINS_CONTAINER -w "$WORKSPACE" -v odc_data:/usr/share/dependency-check/data \
-                  owasp/dependency-check:latest --scan package-lock.json --format ALL --out reports/seguridad/dependency-check \
-                  --failOnCVSS 7 --nvdApiKey "$(cat $SECRETOS/nvd_api_key)" --project carta-digital-pnk
+                DC="docker run --rm -u root --volumes-from $JENKINS_CONTAINER -w $WORKSPACE -v odc_data:/usr/share/dependency-check/data owasp/dependency-check:latest --scan package-lock.json --format ALL --out reports/seguridad/dependency-check --failOnCVSS 7 --project carta-digital-pnk"
+                $DC --nvdApiKey "$(cat $SECRETOS/nvd_api_key)" > reports/seguridad/dependency-check/consola.log 2>&1
+                rc=$?
+                cat reports/seguridad/dependency-check/consola.log
+                # Si la API de NVD esta caida (503) no se puede actualizar: se reintenta con la copia local ya descargada.
+                # La compuerta (CVSS >= 7) se aplica igual; solo cambia que los datos pueden tener unas horas de antiguedad.
+                if [ $rc -ne 0 ] && grep -q "Error updating the NVD Data" reports/seguridad/dependency-check/consola.log; then
+                  echo "NVD no disponible: se analiza con la base local (--noupdate)"
+                  $DC --noupdate
+                  rc=$?
+                fi
+                exit $rc
               '''
             }
             dependencyCheckPublisher pattern: 'reports/seguridad/dependency-check/dependency-check-report.xml', failedTotalHigh: 0, failedTotalCritical: 0
